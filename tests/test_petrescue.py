@@ -54,6 +54,15 @@ class ParseListTest(unittest.TestCase):
         self.assertEqual(bella.sex, "Female")
         self.assertIn("NSW", bella.location)
 
+    def test_species_detected_and_non_dogs_excludable(self):
+        """Cards carry a species; the group fixture includes a non-dog the filter drops."""
+        listings = petrescue.parse_list(_load("petrescue_group.html"))
+        dogs = [l for l in listings if petrescue.is_dog(l)]
+        non_dogs = [l for l in listings if not petrescue.is_dog(l)]
+        self.assertTrue(any(l.species == "dog" for l in dogs))
+        self.assertTrue(non_dogs, "fixture should contain at least one non-dog (rabbit)")
+        self.assertNotIn("Tinkerbell", [l.name for l in dogs])
+
     def test_empty_page_returns_empty_list(self):
         """A page with no cards returns [] rather than raising."""
         self.assertEqual(petrescue.parse_list("<html><body>no cards</body></html>"), [])

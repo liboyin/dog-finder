@@ -20,7 +20,11 @@ BASE_URL = "https://www.petrescue.com.au"
 
 _SIZES = {"small", "medium", "large"}
 _SEXES = {"male", "female"}
-_SPECIES_TAIL = {"dog", "dogs", "cat", "cats", "puppy", "kitten"}
+_SPECIES_TAIL = {
+    "dog", "dogs", "puppy", "puppies", "cat", "cats", "kitten", "kittens",
+    "rabbit", "rabbits", "guinea", "bird", "birds", "horse", "pig",
+}
+DOG_SPECIES = {"dog", "dogs", "puppy", "puppies"}
 
 _CARD_RE = re.compile(
     r"<a class='cards-listings-preview__content' href='(/listings/\d+)'>(.*?)</a>",
@@ -56,6 +60,7 @@ class Listing:
     age: str | None = None
     sex: str | None = None
     size: str | None = None
+    species: str | None = None
     location: str | None = None
     shelter: str | None = None
     fee: str | None = None
@@ -106,6 +111,27 @@ def split_species(description: str | None) -> tuple[str | None, str | None, str 
     return size, sex, breed
 
 
+def species_of(phrase: str | None) -> str | None:
+    """Return the lowercase species noun ending a PetRescue phrase, or None.
+
+    Args:
+        phrase: A card species phrase or detail description.
+
+    Returns:
+        The trailing animal noun ("dog", "cat", "rabbit", ...) if recognized.
+    """
+    cleaned = _clean(phrase)
+    if not cleaned:
+        return None
+    last = cleaned.split()[-1].lower()
+    return last if last in _SPECIES_TAIL else None
+
+
+def is_dog(listing: Listing) -> bool:
+    """Return True if the listing's species is a dog (or unknown, kept as dog)."""
+    return listing.species is None or listing.species in DOG_SPECIES
+
+
 def parse_list(html_text: str) -> list[Listing]:
     """Parse a PetRescue group or search page into card-level listings.
 
@@ -128,13 +154,15 @@ def parse_list(html_text: str) -> list[Listing]:
             raise ParseError(
                 f"card {href} matched but has no <h3> name (template drift)"
             )
-        size, sex, _ = split_species(_first_group(_SPECIES_RE, inner))
+        species_phrase = _first_group(_SPECIES_RE, inner)
+        size, sex, _ = split_species(species_phrase)
         listings.append(
             Listing(
                 url=BASE_URL + href,
                 name=name,
                 size=size,
                 sex=sex,
+                species=species_of(species_phrase),
                 location=_clean(_first_group(_LOCATION_RE, inner)),
             )
         )
@@ -173,6 +201,7 @@ def parse_detail(html_text: str, listing: Listing) -> Listing:
     listing.size = listing.size or size
     listing.sex = listing.sex or sex
     listing.breed = breed
+    listing.species = listing.species or species_of(description)
 
     fee_match = _FEE_RE.search(html_text)
     listing.fee = fee_match.group(1) if fee_match else None
