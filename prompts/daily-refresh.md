@@ -1,6 +1,6 @@
-# Daily-refresh prompt for poodle-index
+# Daily-refresh prompt for dog-finder
 
-**To install as a scheduled task:** in Claude Code, run `/schedule` and paste the prompt below. Cron: `0 21 * * *` (9pm AEST daily). Task ID suggestion: `poodle-index-daily-refresh`.
+**To install as a scheduled task:** in Claude Code, run `/schedule` and paste the prompt below. Cron: `0 21 * * *` (9pm AEST daily). Task ID suggestion: `dog-finder-daily-refresh`.
 
 ---
 
@@ -10,8 +10,8 @@ YOU (the top-level agent) are the planner and coordinator running Claude Sonnet 
 
 ## Files
 
-- Index: `/Users/fanguard/poodle-index/dog-index.md` — the only file users read; preserve its structure
-- Shelter list: `/Users/fanguard/poodle-index/shelters.json` — source of truth for what to scrape
+- Index: `/Users/fanguard/Code/dog-finder/data/dog-index.md` — the only file users read; preserve its structure
+- Shelter list: `/Users/fanguard/Code/dog-finder/config/shelters.json` — source of truth for what to scrape
 
 ## Process
 
