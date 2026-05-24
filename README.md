@@ -24,8 +24,11 @@ The work splits along a judgment/determinism line:
   irreducibly model work, so it stays with the model.
 - **Code does the rote work.** Fetching static pages, parsing listing cards into structured
   records, deduping against the known-URL set, and building the run manifest are deterministic
-  and belong in Python, not in model context. (This code delegation is the Phase 2 refactor
-  described in `HANDOVER.md`; today the prompt still drives scraping via subagents.)
+  and belong in Python, not in model context. The `src/pipeline.py` CLI runs first each night:
+  it fetches and parses the server-rendered PetRescue shelters (the majority), dedups new dogs
+  against the index, fetches each new listing's detail page for breed/fee, and writes a compact
+  `candidates.json` plus a per-source `fetch_manifest.json`. The LLM then judges that candidate
+  list instead of ingesting raw HTML.
 - **JS-rendered shelters use a browser MCP.** Shelters whose listings are JavaScript-rendered
   (`render: js` in the shelter list) can't be read by a plain HTTP fetch. These are handled by
   the LLM driving Playwright / Claude-in-Chrome MCP, typically via a Haiku subagent.
