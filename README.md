@@ -10,28 +10,34 @@ operational commands and the in-progress refactor plan, see [`HANDOVER.md`](HAND
 
 ## What it produces
 
-`data/dog-index.md` is the only artifact a human reads, and the one whose git history
-carries lasting value — it is the record of which dogs appeared and were adopted over
-time. The workflow is human-in-the-loop: the agent maintains the index, a person reviews it.
+`data/dog-index.md` is the artifact a human reads — the current qualifying dogs, newest
+first. Its authoritative backing is `data/state.json`, a machine-owned record of every
+listing ever seen (keyed by URL) with its fields, the LLM's qualify verdict, and first/last
+seen timestamps. The index is *rendered* from state; the git history of both is the record
+of which dogs appeared and were adopted over time. The workflow is human-in-the-loop: the
+system maintains state and index, a person reviews the index.
 
 ## Architecture
 
-The work splits along a judgment/determinism line:
+The work splits along a judgment/determinism line, and state lives with code rather than in
+the prose Markdown:
 
-- **The LLM does judgment.** A top-level Claude agent is the planner/coordinator. It decides
-  whether a breed or cross meets the low-shed/low-odour criteria, writes the per-dog summaries,
-  resolves geo-borderline cases, classifies adoption status, and edits the index. Judgment is
-  irreducibly model work, so it stays with the model.
-- **Code does the rote work.** Fetching static pages, parsing listing cards into structured
-  records, deduping against the known-URL set, and building the run manifest are deterministic
-  and belong in Python, not in model context. The `src/pipeline.py` CLI runs first each night:
-  it fetches and parses the server-rendered PetRescue shelters (the majority), dedups new dogs
-  against the index, fetches each new listing's detail page for breed/fee, and writes a compact
-  `candidates.json` plus a per-source `fetch_manifest.json`. The LLM then judges that candidate
-  list instead of ingesting raw HTML.
+- **Code does the rote work and owns the state.** Fetching static pages, parsing listing
+  cards, deduping, and tracking what's been seen are deterministic and belong in Python. The
+  `src/pipeline.py collect` phase runs first each night: it fetches and parses the
+  server-rendered PetRescue shelters (the majority), dedups against `state.json`, detail-fetches
+  each genuinely new dog for breed/fee, flags qualified dogs that vanished as `maybe_adopted`,
+  and writes `pending.json` (dogs needing a verdict) + `fetch_manifest.json`. The
+  `apply` phase then merges the LLM's verdicts back into state and re-renders the index.
+- **The LLM does only judgment.** It decides whether a breed/cross meets the low-shed criteria,
+  writes the ≤25-word summaries, resolves geo-borderline cases, and confirms vanished dogs as
+  adopted — emitting a single `verdicts.json`. It never hand-edits the index or state; code
+  renders `data/dog-index.md` from `state.json`, touching only the region between the
+  `<!-- DOGS:BEGIN/END -->` markers so human-authored prose is preserved.
 - **JS-rendered shelters use a browser MCP.** Shelters whose listings are JavaScript-rendered
-  (`render: js` in the shelter list) can't be read by a plain HTTP fetch. These are handled by
-  the LLM driving Playwright / Claude-in-Chrome MCP, typically via a Haiku subagent.
+  (`render: js`) or non-PetRescue own-sites with no code parser are flagged `NEEDS_BROWSER` in
+  the manifest; the LLM drives Playwright / Claude-in-Chrome MCP (typically via a Haiku
+  subagent) for those and judges the results alongside the pipeline's candidates.
 
 ## Key design decisions
 
@@ -49,9 +55,10 @@ The work splits along a judgment/determinism line:
   `--max-budget-usd 2.5` rather than being throttled into a multi-hour death-crawl. The figure
   comes from observed per-run cost (a low-shed run hit US$2.72); it will be revisited once the
   code-delegation refactor lowers per-run cost.
-- **Git tracks the valuable artifact and its inputs.** The index, shelter config, prompt, code,
-  and deploy files are tracked. Logs and per-run stream/report artifacts are generated, not
-  authored, so they are gitignored.
+- **Git tracks the valuable artifacts and their inputs.** `state.json` (the authoritative
+  record), the rendered index, shelter config, prompt, code, and deploy files are tracked. The
+  per-run artifacts (`pending.json`, `verdicts.json`, `fetch_manifest.json`, stream/report) and
+  logs are generated, not authored, so they are gitignored under `runs/` and `logs/`.
 
 ## Assumptions
 
