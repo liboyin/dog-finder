@@ -52,6 +52,25 @@ class PendingAndDisappearTest(unittest.TestCase):
         self.assertEqual(state["listings"]["https://x/listings/9"]["recheck"], "maybe_adopted")
 
 
+class PruneStaleTest(unittest.TestCase):
+    def test_prunes_only_entries_unseen_before_cutoff(self):
+        """Entries last seen before the cutoff are removed; newer ones are kept."""
+        state = store.empty_state()
+        state["listings"]["https://x/old"] = {"url": "https://x/old", "last_seen": "20260101-000000"}
+        state["listings"]["https://x/new"] = {"url": "https://x/new", "last_seen": "20260401-000000"}
+        removed = store.prune_stale(state, cutoff="20260301-000000")
+        self.assertEqual([e["url"] for e in removed], ["https://x/old"])
+        self.assertIn("https://x/new", state["listings"])
+        self.assertNotIn("https://x/old", state["listings"])
+
+    def test_keeps_entries_without_last_seen(self):
+        """An entry missing last_seen is never pruned (treated as unknown, kept)."""
+        state = store.empty_state()
+        state["listings"]["https://x/y"] = {"url": "https://x/y"}
+        self.assertEqual(store.prune_stale(state, cutoff="20990101-000000"), [])
+        self.assertIn("https://x/y", state["listings"])
+
+
 class ApplyVerdictsTest(unittest.TestCase):
     def test_sets_verdict_and_creates_browser_entry(self):
         """Verdicts update existing entries and create browser-found ones."""

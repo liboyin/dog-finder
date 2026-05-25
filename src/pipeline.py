@@ -24,7 +24,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from src import manifest, render, store
 from src.dedup import canonical
@@ -235,6 +235,26 @@ def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
     }
 
 
+def prune(state_path: str, days: int) -> int:
+    """Drop state entries last seen more than ``days`` ago.
+
+    Args:
+        state_path: Path to data/state.json.
+        days: Retention window in days; entries older than this are removed.
+
+    Returns:
+        The number of entries pruned.
+    """
+    state = store.load_state(state_path)
+    cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y%m%d-%H%M%S")
+    removed = store.prune_stale(state, cutoff)
+    if removed:
+        store.save_state(state_path, state)
+    logger.info("prune: removed %d stale entry(ies) last seen before %s (%d-day retention)",
+                len(removed), cutoff, days)
+    return len(removed)
+
+
 def _load_verdicts(path: str) -> list[dict]:
     """Load verdicts.json, accepting either a bare list or a {"verdicts": [...]} dict."""
     with open(path, encoding="utf-8") as handle:
@@ -282,6 +302,10 @@ def main() -> int:
                         help="log each new dog as its detail page is fetched")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    prune_parser = sub.add_parser("prune", help="drop state entries unseen beyond the retention window")
+    prune_parser.add_argument("--state", required=True)
+    prune_parser.add_argument("--days", type=int, default=90, help="retention window in days (default 90)")
+
     collect_parser = sub.add_parser("collect", help="fetch/parse/dedup into state + pending.json")
     collect_parser.add_argument("--shelters", required=True)
     collect_parser.add_argument("--state", required=True)
@@ -298,7 +322,10 @@ def main() -> int:
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%H:%M:%S",
     )
-    if args.command == "collect":
+    if args.command == "prune":
+        n_pruned = prune(args.state, args.days)
+        print(f"prune complete: removed {n_pruned} stale entry(ies)")
+    elif args.command == "collect":
         stats = collect(args.shelters, args.state, args.out)
         print(
             f"collect complete: {stats['n_new']} new, {stats['n_pending']} pending, "

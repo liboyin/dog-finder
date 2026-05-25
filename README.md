@@ -69,3 +69,6 @@ the prose Markdown:
 - The 5-hour rolling rate-limit window — not a monthly quota — is the binding usage constraint.
 - Legacy index entries predating the 2026-05-24 low-shed criteria change are left to age out
   rather than retroactively pruned; a header note in the index flags them.
+- `state.json` is kept bounded by a 90-day retention sweep at the start of each run: entries
+  not seen on any shelter for 90 days are dropped (keyed on `last_seen`, so still-listed dogs
+  never age out). A dog that reappears after being pruned is simply re-discovered as new.

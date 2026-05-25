@@ -138,6 +138,27 @@ def flag_disappeared(state: dict, present: set[str], ts: str) -> list[dict]:
     return flagged
 
 
+def prune_stale(state: dict, cutoff: str) -> list[dict]:
+    """Remove listings whose last_seen predates the cutoff, bounding file growth.
+
+    Pruning keys on ``last_seen`` only, so a still-listed dog (its last_seen is
+    bumped every run) is never removed — only listings unseen since the cutoff
+    age out. A pruned dog that later reappears is simply re-discovered as new.
+
+    Args:
+        state: The state document (mutated in place).
+        cutoff: A 'YYYYMMDD-HHMMSS' timestamp; entries last seen before it go.
+
+    Returns:
+        The list of removed entries.
+    """
+    stale_keys = [
+        key for key, entry in state["listings"].items()
+        if entry.get("last_seen") and entry["last_seen"] < cutoff
+    ]
+    return [state["listings"].pop(key) for key in stale_keys]
+
+
 def pending_listings(state: dict) -> list[dict]:
     """Return entries the LLM must judge: pending verdicts plus re-checks."""
     return [

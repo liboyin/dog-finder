@@ -46,6 +46,11 @@ if [ -z "$PROMPT" ]; then
   exit 1
 fi
 
+# Retention: drop state entries unseen for >90 days so state.json stays bounded.
+echo "$(date '+%F %T %Z') prune stale state (>90d)" >> "$LOG"
+/usr/bin/python3 -m src.pipeline prune --state "$STATE" --days 90 >> "$LOG" 2>&1 \
+  || echo "$(date '+%F %T %Z') WARN: prune exited non-zero" >> "$LOG"
+
 # Phase 2 collect: deterministic fetch/parse/dedup into state.json before the LLM.
 # Non-fatal: if it fails, the LLM still runs and can fall back to the browser path.
 echo "$(date '+%F %T %Z') collect -> $RUNDIR" >> "$LOG"
