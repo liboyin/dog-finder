@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-05-25
+- **Last refreshed:** 2026-05-26
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -12,6 +12,20 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ## Current candidates
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
+
+### [NEW 2026-05-26] Cinnamon — Poodle (Toy) Mix, not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1191675
+- **Shelter:** PetRescue NSW poodle search (aggregator) (Bateau Bay, NSW </strong> <div class='cards-listings-preview__content__section__interstate'> <span> Interstate adoption unavailable </span>)
+- **Status:** available · **Fee:** $1,500.00 · **Size:** Small
+- **date_indexed:** 2026-05-26
+- Male small Toy Poodle mix in Bateau Bay NSW; second parent breed not stated in listing.  _(verify coat/breed)_
+
+### [NEW 2026-05-26] Gilly — Shih Tzu, not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1192413
+- **Shelter:** PetRescue NSW poodle search (aggregator) (Bateau Bay, NSW </strong> <div class='cards-listings-preview__content__section__interstate'> <span> Interstate adoption unavailable </span>)
+- **Status:** available · **Fee:** $950.00 · **Size:** Small
+- **date_indexed:** 2026-05-26
+- Female Shih Tzu, small, available in Bateau Bay NSW; pure low-shedding low-odour breed.
 
 ### [NEW 2026-05-25] Teddy — Poodle (Toy), not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1193686
@@ -40,13 +54,6 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Status:** available · **Fee:** not stated · **Size:** toy
 - **date_indexed:** 2026-05-24
 - Young toy poodle–pug cross available at Wollongong city shelter; fee not listed on council page.
-
-### [NEW 2026-05-20] Bindi — Australian Shepherd x Poodle, 1–2y, female
-- **URL:** https://www.deniseatpaws.com.au/adopt-a-pet
-- **Shelter:** Denise at Paws (Mid North Coast, NSW — verify location is within 4hr drive)
-- **Status:** available · **Fee:** $650 · **Size:** large (26 kg)
-- **date_indexed:** 2026-05-20
-- Energetic, intelligent Australian Shepherd x Poodle cross seeking active home. Listed on shelter's own page rather than a per-dog URL.
 
 ### [NEW 2026-05-20] Milo — Labradoodle, 8y, male
 - **URL:** https://www.petrescue.com.au/listings/1187908
