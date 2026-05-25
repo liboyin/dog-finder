@@ -13,6 +13,27 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
 
+### [NEW 2026-05-25] Teddy — Poodle (Toy), not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1193686
+- **Shelter:** Shoalhaven Animal Shelter (Council) (Nowra, NSW)
+- **Status:** available · **Fee:** $437.00 · **Size:** Small
+- **date_indexed:** 2026-05-25
+- Playful, housetrained 9-month-old Toy Poodle; food-motivated, loves cuddles and toys, suits an active family.
+
+### [NEW 2026-05-25] Gypsy — Shih Tzu, not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1193843
+- **Shelter:** RSPCA NSW Hunter Shelter (Rutherford) (Rutherford, NSW)
+- **Status:** available · **Fee:** $500.00 · **Size:** Small
+- **date_indexed:** 2026-05-25
+- Gentle, affectionate 5-year-old Shih Tzu suited to calm households with children 6+; loves cuddles and garden walks.
+
+### [NEW 2026-05-25] Ella — Shih Tzu x Maltese cross, 9 years old (senior), female
+- **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/ella
+- **Shelter:** Wollongong Pet Connection (location unstated)
+- **Status:** available · **Fee:** not stated · **Size:** not stated
+- **date_indexed:** 2026-05-25
+- Senior 9-year-old Shih Tzu–Maltese cross; white coat, desexed, vaccinated, microchipped, and ready for a loving home.
+
 ### [NEW 2026-05-24] Kev — Poodle (Toy) x Pug, 10 months, male
 - **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/kev
 - **Shelter:** City of Wollongong Animal Shelter (Wollongong, NSW)
@@ -20,54 +41,19 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **date_indexed:** 2026-05-24
 - Young toy poodle–pug cross available at Wollongong city shelter; fee not listed on council page.
 
-### [NEW 2026-05-20] Milo — Labradoodle, 8y, male
-- **URL:** https://www.petrescue.com.au/listings/1187908
-- **Shelter:** Dog Rescue Newcastle (Newcastle, NSW)
-- **Status:** available · **Fee:** $300 · **Size:** medium
-- **date_indexed:** 2026-05-20
-- Incredibly social and friendly Labradoodle with a beautiful nature, though he resource-guards around food and must be the only pet in the home.
-
-### [NEW 2026-05-20] Darryl — Poodle Mix, 5y, male
-- **URL:** https://www.petrescue.com.au/listings/1188309
-- **Shelter:** SMART Animal Sanctuary & Rehoming Centre (Kunama, NSW — borderline >4hr drive, verify before travel)
-- **Status:** available · **Fee:** $1,500 · **Size:** small (5.6 kg)
-- **date_indexed:** 2026-05-20
-- Social and affectionate ex-outdoor dog who gets along with small dogs and is eager to find a loving indoor home.
-
-### [NEW 2026-05-20] Marmalade — Toy Poodle Mix, 6y, male
-- **URL:** https://www.petrescue.com.au/listings/1187055
-- **Shelter:** Sydney Animal Second-Chance Inc. (Waterloo, NSW)
-- **Status:** on-hold (reviewing applications) · **Fee:** not stated · **Size:** small
-- **date_indexed:** 2026-05-20
-- Delightful, obedient toy poodle mix who is playful and energetic but prefers homes without young children and must be the only dog.
-
-### [NEW 2026-05-20] Norman — Cavoodle, young adult, male
-- **URL:** https://www.petrescue.com.au/listings/1182860
-- **Shelter:** Maggie's Rescue Co-operative Ltd (Warrimoo, NSW — Blue Mountains)
-- **Status:** on-hold (adoption pending) · **Fee:** not stated · **Size:** small (3 kg)
-- **date_indexed:** 2026-05-20
-- Tiny charming cavoodle with big personality who needs experienced adult-only owners willing to work with complex behavioural needs.
-
-### [NEW 2026-05-20] Pablo — Miniature Poodle, ~4y, male
-- **URL:** https://www.petrescue.com.au/listings/1178685
-- **Shelter:** Ozzi Hearts 4 Paws (San Remo, NSW — Lake Macquarie)
-- **Status:** on-hold (adoption pending) · **Fee:** not stated · **Size:** small
-- **date_indexed:** 2026-05-20
-- Former breeding stud who has settled beautifully in rescue, enjoying cuddles and making friends easily with other dogs and cats.
-
-### [NEW 2026-05-20] Tillie — Cavoodle, 17 months, female
-- **URL:** https://www.petrescue.com.au/listings/1053716
-- **Shelter:** Sydney Animal Second-Chance Inc. (Panania, NSW)
-- **Status:** on-hold (adoption pending) · **Fee:** not stated · **Size:** small (3 kg)
-- **date_indexed:** 2026-05-20
-- Former breeding facility dog who is initially shy with strangers but loves to snuggle on the lounge once settled.
-
 ### [NEW 2026-05-20] Bindi — Australian Shepherd x Poodle, 1–2y, female
 - **URL:** https://www.deniseatpaws.com.au/adopt-a-pet
 - **Shelter:** Denise at Paws (Mid North Coast, NSW — verify location is within 4hr drive)
 - **Status:** available · **Fee:** $650 · **Size:** large (26 kg)
 - **date_indexed:** 2026-05-20
 - Energetic, intelligent Australian Shepherd x Poodle cross seeking active home. Listed on shelter's own page rather than a per-dog URL.
+
+### [NEW 2026-05-20] Milo — Labradoodle, 8y, male
+- **URL:** https://www.petrescue.com.au/listings/1187908
+- **Shelter:** Dog Rescue Newcastle (Newcastle, NSW)
+- **Status:** available · **Fee:** $300 · **Size:** medium
+- **date_indexed:** 2026-05-20
+- Incredibly social and friendly Labradoodle with a beautiful nature, though he resource-guards around food and must be the only pet in the home.
 
 <!-- DOGS:END -->
 
