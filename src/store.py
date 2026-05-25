@@ -53,7 +53,7 @@ def save_state(path: str, state: dict) -> None:
         json.dump(state, out, indent=2, ensure_ascii=False, sort_keys=True)
 
 
-def _entry_from_listing(listing: Listing, ts: str) -> dict:
+def _entry_from_listing(listing: Listing, ts: str, source_kind: str) -> dict:
     """Build a new state entry from a freshly-parsed listing."""
     return {
         "url": listing.url,
@@ -67,7 +67,7 @@ def _entry_from_listing(listing: Listing, ts: str) -> dict:
         "shelter": listing.shelter,
         "fee": listing.fee,
         "status": listing.status,
-        "source_kind": "petrescue",
+        "source_kind": source_kind,
         "first_seen": ts,
         "last_seen": ts,
         "verdict": PENDING,
@@ -78,13 +78,14 @@ def _entry_from_listing(listing: Listing, ts: str) -> dict:
     }
 
 
-def upsert_petrescue(state: dict, listing: Listing, ts: str) -> bool:
-    """Insert or update a PetRescue listing in the state.
+def upsert_listing(state: dict, listing: Listing, ts: str, source_kind: str = "petrescue") -> bool:
+    """Insert or update a code-parsed listing in the state.
 
     Args:
         state: The state document (mutated in place).
         listing: The parsed listing to record.
         ts: This run's timestamp.
+        source_kind: The parser's source identifier (e.g. "petrescue").
 
     Returns:
         True if the listing was new (and therefore needs a verdict), else False.
@@ -92,7 +93,7 @@ def upsert_petrescue(state: dict, listing: Listing, ts: str) -> bool:
     key = canonical(listing.url)
     existing = state["listings"].get(key)
     if existing is None:
-        state["listings"][key] = _entry_from_listing(listing, ts)
+        state["listings"][key] = _entry_from_listing(listing, ts, source_kind)
         return True
     existing["last_seen"] = ts
     if listing.status:
@@ -125,7 +126,7 @@ def flag_disappeared(state: dict, present: set[str], ts: str) -> list[dict]:
     flagged = []
     for entry in state["listings"].values():
         if (
-            entry.get("source_kind") == "petrescue"
+            entry.get("source_kind") != "browser"
             and entry.get("verdict") == QUALIFIED
             and not entry.get("removed")
             and entry["url"] not in present

@@ -19,8 +19,8 @@ class UpsertTest(unittest.TestCase):
     def test_new_then_existing(self):
         """First upsert is new (pending); a second updates last_seen and is not new."""
         state = store.empty_state()
-        self.assertTrue(store.upsert_petrescue(state, _listing("https://x/listings/1", name="A"), TS1))
-        self.assertFalse(store.upsert_petrescue(state, _listing("https://x/listings/1", name="A", status="on-hold"), TS2))
+        self.assertTrue(store.upsert_listing(state, _listing("https://x/listings/1", name="A"), TS1))
+        self.assertFalse(store.upsert_listing(state, _listing("https://x/listings/1", name="A", status="on-hold"), TS2))
         entry = state["listings"]["https://x/listings/1"]
         self.assertEqual(entry["verdict"], store.PENDING)
         self.assertEqual(entry["first_seen"], TS1)
@@ -32,7 +32,7 @@ class PendingAndDisappearTest(unittest.TestCase):
     def test_pending_includes_pending_and_rechecks(self):
         """pending_listings returns pending verdicts and re-check-flagged entries."""
         state = store.empty_state()
-        store.upsert_petrescue(state, _listing("https://x/listings/1"), TS1)
+        store.upsert_listing(state, _listing("https://x/listings/1"), TS1)
         state["listings"]["https://x/listings/2"] = {
             "url": "https://x/listings/2", "verdict": store.QUALIFIED, "removed": False,
             "source_kind": "petrescue", "recheck": "maybe_adopted",
@@ -56,7 +56,7 @@ class ApplyVerdictsTest(unittest.TestCase):
     def test_sets_verdict_and_creates_browser_entry(self):
         """Verdicts update existing entries and create browser-found ones."""
         state = store.empty_state()
-        store.upsert_petrescue(state, _listing("https://x/listings/1"), TS1)
+        store.upsert_listing(state, _listing("https://x/listings/1"), TS1)
         store.apply_verdicts(state, [
             {"url": "https://x/listings/1", "verdict": "qualified", "summary": "Good dog.", "tags": ["t"]},
             {"url": "https://site/fido", "verdict": "qualified", "name": "Fido", "breed": "Maltese", "source_kind": "browser"},
@@ -71,7 +71,7 @@ class ApplyVerdictsTest(unittest.TestCase):
     def test_removed_flag(self):
         """A verdict with removed=True hides the listing from render."""
         state = store.empty_state()
-        store.upsert_petrescue(state, _listing("https://x/listings/1"), TS1)
+        store.upsert_listing(state, _listing("https://x/listings/1"), TS1)
         store.apply_verdicts(state, [{"url": "https://x/listings/1", "verdict": "qualified", "removed": True}], TS2)
         self.assertEqual(store.qualified_for_render(state), [])
 

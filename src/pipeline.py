@@ -28,32 +28,21 @@ from datetime import datetime
 from src import manifest, render, store
 from src.dedup import canonical
 from src.fetch import FetchError, fetch
-from src.parsers import petrescue
-from src.parsers.petrescue import ParseError
+from src.parsers import registry
+from src.parsers.base import ParseError, is_dog
 
-PETRESCUE_HOST = "petrescue.com.au"
 DETAIL_FETCH_DELAY_S = 0.5
 
 
-def _petrescue_url(shelter: dict) -> str | None:
-    """Return the shelter's PetRescue URL (listing or cross-post), or None."""
-    listing_url = shelter.get("listing_url", "")
-    if PETRESCUE_HOST in listing_url:
-        return listing_url
-    cross_post = shelter.get("petrescue_url", "")
-    if PETRESCUE_HOST in cross_post:
-        return cross_post
-    return None
-
-
-def _collect_petrescue(
-    shelter: dict, url: str, state: dict, present: set[str], ts: str
+def _collect_source(
+    shelter: dict, module, url: str, state: dict, present: set[str], ts: str
 ) -> manifest.SourceResult:
-    """Fetch a PetRescue page, upserting its dogs into state.
+    """Fetch and parse one shelter page with its parser, upserting dogs to state.
 
     Args:
         shelter: The shelter config entry.
-        url: PetRescue page URL to fetch.
+        module: The parser module resolved for this shelter.
+        url: The page URL to fetch.
         state: The state document (mutated in place).
         present: Set of canonical URLs seen on OK pages this run (mutated).
         ts: This run's timestamp.
@@ -67,6 +56,7 @@ def _collect_petrescue(
         render=shelter.get("render", "static"), status=manifest.STATUS_OK,
         fetched_url=url,
     )
+    has_detail = hasattr(module, "parse_detail")
 
     try:
         result = fetch(url)
@@ -78,7 +68,7 @@ def _collect_petrescue(
     base.http_status = result.status
     base.bytes = result.bytes
     try:
-        cards = petrescue.parse_list(result.body)
+        cards = module.parse_list(result.body)
     except ParseError as error:
         base.status = manifest.STATUS_PARSE_ERROR
         base.error = str(error)
@@ -91,21 +81,22 @@ def _collect_petrescue(
         return base
 
     n_new = 0
-    for card in (c for c in cards if petrescue.is_dog(c)):
+    for card in (c for c in cards if is_dog(c)):
         key = canonical(card.url)
         present.add(key)
         if key in state["listings"]:
             store.touch(state, card.url, ts)
             continue
-        card.shelter = name
-        try:
-            detail = fetch(card.url)
-            petrescue.parse_detail(detail.body, card)
-        except (FetchError, ParseError) as error:
-            base.error = f"detail fetch/parse issue: {error}"
-        store.upsert_petrescue(state, card, ts)
+        card.shelter = card.shelter or name
+        if has_detail:
+            try:
+                detail = fetch(card.url)
+                module.parse_detail(detail.body, card)
+            except (FetchError, ParseError) as error:
+                base.error = f"detail fetch/parse issue: {error}"
+            time.sleep(DETAIL_FETCH_DELAY_S)
+        store.upsert_listing(state, card, ts, getattr(module, "SOURCE_KIND", "petrescue"))
         n_new += 1
-        time.sleep(DETAIL_FETCH_DELAY_S)
 
     base.n_new = n_new
     return base
@@ -139,15 +130,16 @@ def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
                 shelter=shelter["name"], listing_url=shelter["listing_url"],
                 render=render_kind, status=manifest.STATUS_SKIPPED_DEAD))
             continue
-        url = _petrescue_url(shelter)
-        if url is None:
-            reason = ("JS-rendered, no PetRescue cross-post" if render_kind == "js"
+        resolved = registry.resolve(shelter)
+        if resolved is None:
+            reason = ("JS-rendered, no code parser" if render_kind == "js"
                       else "no code parser for this site")
             run_manifest.add(manifest.SourceResult(
                 shelter=shelter["name"], listing_url=shelter["listing_url"],
                 render=render_kind, status=manifest.STATUS_NEEDS_BROWSER, error=reason))
             continue
-        run_manifest.add(_collect_petrescue(shelter, url, state, present, ts))
+        module, url = resolved
+        run_manifest.add(_collect_source(shelter, module, url, state, present, ts))
 
     flagged = store.flag_disappeared(state, present, ts)
     store.save_state(state_path, state)
