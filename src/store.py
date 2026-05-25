@@ -151,7 +151,6 @@ def flag_disappeared(
             and entry.get("shelter") in fetched_shelters
             and entry.get("verdict") == QUALIFIED
             and not entry.get("removed")
-            and entry["url"] not in present
             and canonical(entry["url"]) not in present
             and entry.get("recheck") != "maybe_adopted"
         ):
