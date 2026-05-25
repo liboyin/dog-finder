@@ -8,13 +8,14 @@ cross-posts to PetRescue is still handled in code via that cross-post.
 """
 from __future__ import annotations
 
-from src.parsers import doggierescue, petrescue
+from src.parsers import doggierescue, petrescue, wollongong
 
 # (host substrings, parser module). First match wins. Entries are added here as
 # each site parser lands.
 _REGISTRY = [
     (("petrescue.com.au",), petrescue),
     (("doggierescue.com",), doggierescue),
+    (("wollongong.nsw.gov.au/residents/pets/find-a-pet/find-a-dog",), wollongong),
 ]
 
 
