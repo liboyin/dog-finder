@@ -4,6 +4,16 @@ Every site parser produces :class:`Listing` records and raises
 :class:`ParseError` on markup drift, so the pipeline can treat all parsers
 uniformly. Generic size/sex/species helpers live here too, since several sites
 describe a dog with the same "size sex breed species" shape PetRescue uses.
+
+A parser module exposes ``parse_list(html) -> list[Listing]`` and may optionally
+define:
+
+* ``parse_detail(html, listing) -> Listing`` — enrich a listing from its own
+  detail page (the pipeline detail-fetches only when this exists).
+* ``prepare_url(url) -> str`` — normalize/optimize the start URL before the
+  first fetch (e.g. enlarge a paginated page size).
+* ``next_page_url(html, current_url) -> str | None`` — the next results page, or
+  None on the last page. Parsers without it (or returning None) are single-page.
 """
 from __future__ import annotations
 

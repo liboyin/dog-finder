@@ -11,8 +11,10 @@ quietly dropping a shelter.
 """
 from __future__ import annotations
 
+import html
 import json
 import re
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from src.parsers.base import (
     Listing,
@@ -26,10 +28,13 @@ from src.parsers.base import (
 
 # Re-export shared names so callers/tests can use src.parsers.petrescue.X.
 __all__ = ["Listing", "ParseError", "is_dog", "species_of", "split_species",
-           "parse_list", "parse_detail", "BASE_URL"]
+           "parse_list", "parse_detail", "prepare_url", "next_page_url", "BASE_URL"]
 
 SOURCE_KIND = "petrescue"
 BASE_URL = "https://www.petrescue.com.au"
+# Search results paginate; group pages do not. A larger page size cuts the
+# number of search requests (the site caps the effective size around 60).
+SEARCH_PER_PAGE = 60
 
 _CARD_RE = re.compile(
     r"<a class='cards-listings-preview__content' "
@@ -50,6 +55,8 @@ _LDJSON_RE = re.compile(
 _FEE_RE = re.compile(r"Adoption fee\s*</div>\s*<div[^>]*>\s*(\$[\d,.]+)", re.S)
 _ONHOLD_RE = re.compile(r">\s*On hold\s*<", re.I)
 _ADOPTED_RE = re.compile(r">\s*Adopted\s*<", re.I)
+_NEXT_TAG_RE = re.compile(r"<a\b[^>]*\brel=['\"]next['\"][^>]*>", re.I)
+_HREF_RE = re.compile(r"href=['\"]([^'\"]+)['\"]")
 
 
 def parse_list(html_text: str) -> list[Listing]:
@@ -136,3 +143,52 @@ def _detect_status(html_text: str) -> str:
     if _ONHOLD_RE.search(html_text):
         return "on-hold"
     return "available"
+
+
+def _with_param(url: str, key: str, value: str) -> str:
+    """Return url with the query parameter key set to value (replacing any existing)."""
+    parts = urlsplit(url)
+    params = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k != key]
+    params.append((key, value))
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(params), parts.fragment))
+
+
+def prepare_url(url: str) -> str:
+    """Enlarge the page size for a search URL to cut request count; else unchanged.
+
+    Args:
+        url: The shelter's listing URL.
+
+    Returns:
+        The search URL with ``per_page`` set; group/other URLs are returned as-is.
+    """
+    if "/listings/search" not in url:
+        return url
+    return _with_param(url, "per_page", str(SEARCH_PER_PAGE))
+
+
+def next_page_url(html_text: str, current_url: str) -> str | None:
+    """Return the absolute URL of the next results page, or None on the last page.
+
+    Group pages have no ``rel="next"`` link, so this returns None and they stay
+    single-page. Search pages carry a ``rel="next"`` anchor whose href preserves
+    the query; the page size is re-applied so it persists across pages.
+
+    Args:
+        html_text: Raw HTML of the current page.
+        current_url: The URL the current page was fetched from (unused; the next
+            link is self-contained).
+
+    Returns:
+        The next page's absolute URL, or None when there is no next page.
+    """
+    tag = _NEXT_TAG_RE.search(html_text)
+    if tag is None:
+        return None
+    href = _HREF_RE.search(tag.group(0))
+    if href is None:
+        return None
+    nxt = html.unescape(href.group(1))
+    if nxt.startswith("/"):
+        nxt = BASE_URL + nxt
+    return _with_param(nxt, "per_page", str(SEARCH_PER_PAGE))

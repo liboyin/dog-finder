@@ -33,6 +33,8 @@ from src.parsers import registry
 from src.parsers.base import ParseError, is_dog
 
 DETAIL_FETCH_DELAY_S = 0.5
+PAGE_DELAY_S = 0.5
+MAX_PAGES = 30  # safety cap on pages followed per source
 
 logger = logging.getLogger("dog_finder.pipeline")
 
@@ -40,10 +42,71 @@ logger = logging.getLogger("dog_finder.pipeline")
 def _result_detail(result: manifest.SourceResult) -> str:
     """Build the human-readable tail for a per-shelter log line."""
     if result.status in (manifest.STATUS_OK, manifest.STATUS_EMPTY_OK):
-        return f" — {result.n_cards or 0} cards, {result.n_new or 0} new"
+        pages = f", {result.n_pages}p" if (result.n_pages or 0) > 1 else ""
+        return f" — {result.n_cards or 0} cards, {result.n_new or 0} new{pages}"
     if result.error:
         return f" — {result.error}"
     return ""
+
+
+def _fetch_all_pages(module, start_url: str, base: manifest.SourceResult) -> list:
+    """Fetch and parse every page of a source, following next_page_url.
+
+    Pages are followed until the parser reports no next page, a page yields no
+    cards, or MAX_PAGES is reached. A first-page fetch/parse failure sets
+    ``base.status`` to FETCH_ERROR/PARSE_ERROR and returns []; a later-page
+    failure is noted in ``base.error`` and stops paging with the pages so far.
+
+    Args:
+        module: The parser module (may expose prepare_url / next_page_url).
+        start_url: The source's starting URL.
+        base: The SourceResult to annotate (n_pages, http_status, bytes, error).
+
+    Returns:
+        The cards across all fetched pages, de-duplicated by canonical URL.
+    """
+    page_url = module.prepare_url(start_url) if hasattr(module, "prepare_url") else start_url
+    all_cards: list = []
+    seen: set[str] = set()
+    pages = 0
+    while page_url and pages < MAX_PAGES:
+        try:
+            result = fetch(page_url)
+        except FetchError as error:
+            if pages == 0:
+                base.status = manifest.STATUS_FETCH_ERROR
+                base.error = str(error)
+                return []
+            base.error = f"page {pages + 1} fetch failed: {error}"
+            break
+        if pages == 0:
+            base.http_status = result.status
+            base.bytes = result.bytes
+        try:
+            cards = module.parse_list(result.body)
+        except ParseError as error:
+            if pages == 0:
+                base.status = manifest.STATUS_PARSE_ERROR
+                base.error = str(error)
+                return []
+            base.error = f"page {pages + 1} parse failed: {error}"
+            break
+        pages += 1
+        for card in cards:
+            key = canonical(card.url)
+            if key not in seen:
+                seen.add(key)
+                all_cards.append(card)
+        if not cards:
+            break
+        page_url = module.next_page_url(result.body, page_url) if hasattr(module, "next_page_url") else None
+        if page_url:
+            time.sleep(PAGE_DELAY_S)
+    base.n_pages = pages
+    if page_url and pages >= MAX_PAGES:
+        logger.warning("%s: hit MAX_PAGES=%d cap; later pages skipped", base.shelter, MAX_PAGES)
+        base.error = f"hit MAX_PAGES={MAX_PAGES} cap"
+    return all_cards
 
 
 def _collect_source(
@@ -70,20 +133,8 @@ def _collect_source(
     )
     has_detail = hasattr(module, "parse_detail")
 
-    try:
-        result = fetch(url)
-    except FetchError as error:
-        base.status = manifest.STATUS_FETCH_ERROR
-        base.error = str(error)
-        return base
-
-    base.http_status = result.status
-    base.bytes = result.bytes
-    try:
-        cards = module.parse_list(result.body)
-    except ParseError as error:
-        base.status = manifest.STATUS_PARSE_ERROR
-        base.error = str(error)
+    cards = _fetch_all_pages(module, url, base)
+    if base.status in (manifest.STATUS_FETCH_ERROR, manifest.STATUS_PARSE_ERROR):
         return base
 
     base.n_cards = len(cards)

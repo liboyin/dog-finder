@@ -29,6 +29,7 @@ class SourceResult:
     fetched_url: str | None = None
     http_status: int | None = None
     bytes: int | None = None
+    n_pages: int | None = None
     n_cards: int | None = None
     n_new: int | None = None
     error: str | None = None

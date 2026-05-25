@@ -82,6 +82,27 @@ class ParseListTest(unittest.TestCase):
             petrescue.parse_list(broken)
 
 
+class PaginationTest(unittest.TestCase):
+    def test_prepare_url_enlarges_search_only(self):
+        """prepare_url adds per_page to a search URL but leaves group URLs alone."""
+        search = petrescue.prepare_url("https://www.petrescue.com.au/listings/search/dogs?q=poodle&state_id=1")
+        self.assertIn("per_page=60", search)
+        group = "https://www.petrescue.com.au/groups/10748/X"
+        self.assertEqual(petrescue.prepare_url(group), group)
+
+    def test_next_page_on_search_fixture(self):
+        """A search page yields an absolute next-page URL carrying page and per_page."""
+        nxt = petrescue.next_page_url(_load("petrescue_search.html"), "https://www.petrescue.com.au/listings/search/dogs?q=poodle&state_id=1")
+        self.assertIsNotNone(nxt)
+        self.assertTrue(nxt.startswith("https://www.petrescue.com.au/"))
+        self.assertIn("page=2", nxt)
+        self.assertIn("per_page=60", nxt)
+
+    def test_no_next_on_group_fixture(self):
+        """A group page has no next link, so it stays single-page."""
+        self.assertIsNone(petrescue.next_page_url(_load("petrescue_group.html"), "https://www.petrescue.com.au/groups/1/X"))
+
+
 class ParseDetailTest(unittest.TestCase):
     def test_detail_fixture_fills_breed_and_fee(self):
         """The detail fixture enriches a listing with breed and adoption fee."""
