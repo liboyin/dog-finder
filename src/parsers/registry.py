@@ -10,13 +10,12 @@ from __future__ import annotations
 
 from urllib.parse import urlsplit
 
-from src.parsers import doggierescue, petrescue, wollongong
+from src.parsers import petrescue, wollongong
 
 # (registered host, parser module). First match wins. Entries are added here as
 # each site parser lands.
 _REGISTRY = [
     ("petrescue.com.au", petrescue),
-    ("doggierescue.com", doggierescue),
     ("wollongong.nsw.gov.au", wollongong),
 ]
 

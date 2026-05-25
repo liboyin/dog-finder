@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import unittest
 
-from src.parsers import doggierescue, petrescue, registry, wollongong
+from src.parsers import petrescue, registry, wollongong
 
 
 class ResolveTest(unittest.TestCase):
@@ -27,8 +27,7 @@ class ResolveTest(unittest.TestCase):
         self.assertIn("petrescue.com.au", url)
 
     def test_other_registered_sites(self):
-        """Doggie Rescue and Wollongong resolve to their own parsers."""
-        self.assertIs(registry.resolve({"listing_url": "https://www.doggierescue.com/search-pets/individual-dogs/"})[0], doggierescue)
+        """Wollongong resolves to its own parser."""
         self.assertIs(registry.resolve({"listing_url": "https://www.wollongong.nsw.gov.au/residents/pets/find-a-pet/find-a-dog"})[0], wollongong)
 
     def test_unsupported_site_returns_none(self):
