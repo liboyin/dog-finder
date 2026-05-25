@@ -65,6 +65,7 @@ PROMPT="$PROMPT
 The launcher merges that file into state and re-renders the index after you finish; do NOT edit dog-index.md yourself."
 
 # Tier 2: full event stream -> STREAM ; human-readable progress/errors -> LOG
+echo "$(date '+%F %T %Z') invoking Claude (sonnet) to judge pending dogs; live tool activity in $STREAM" >> "$LOG"
 /usr/local/bin/claude -p "$PROMPT" \
   --model sonnet \
   --dangerously-skip-permissions \

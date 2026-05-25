@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import time
 from datetime import datetime
@@ -32,6 +33,17 @@ from src.parsers import registry
 from src.parsers.base import ParseError, is_dog
 
 DETAIL_FETCH_DELAY_S = 0.5
+
+logger = logging.getLogger("dog_finder.pipeline")
+
+
+def _result_detail(result: manifest.SourceResult) -> str:
+    """Build the human-readable tail for a per-shelter log line."""
+    if result.status in (manifest.STATUS_OK, manifest.STATUS_EMPTY_OK):
+        return f" — {result.n_cards or 0} cards, {result.n_new or 0} new"
+    if result.error:
+        return f" — {result.error}"
+    return ""
 
 
 def _collect_source(
@@ -80,13 +92,19 @@ def _collect_source(
         base.n_new = 0
         return base
 
-    n_new = 0
+    new_cards = []
     for card in (c for c in cards if is_dog(c)):
         key = canonical(card.url)
         present.add(key)
         if key in state["listings"]:
             store.touch(state, card.url, ts)
-            continue
+        else:
+            new_cards.append(card)
+
+    if new_cards and has_detail:
+        logger.info("    %s: fetching %d new detail page(s)", name, len(new_cards))
+    source_kind = getattr(module, "SOURCE_KIND", "petrescue")
+    for card in new_cards:
         card.shelter = card.shelter or name
         if has_detail:
             try:
@@ -95,10 +113,10 @@ def _collect_source(
             except (FetchError, ParseError) as error:
                 base.error = f"detail fetch/parse issue: {error}"
             time.sleep(DETAIL_FETCH_DELAY_S)
-        store.upsert_listing(state, card, ts, getattr(module, "SOURCE_KIND", "petrescue"))
-        n_new += 1
+        store.upsert_listing(state, card, ts, source_kind)
+        logger.debug("      + %s — %s", card.name, card.breed)
 
-    base.n_new = n_new
+    base.n_new = len(new_cards)
     return base
 
 
@@ -123,28 +141,36 @@ def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
     run_manifest = manifest.Manifest(run_ts=ts)
     present: set[str] = set()
 
-    for shelter in shelters:
+    total = len(shelters)
+    logger.info("collect: %d shelters; state has %d known listing(s)", total, len(state["listings"]))
+    for index, shelter in enumerate(shelters, start=1):
         render_kind = shelter.get("render", "static")
         if render_kind == "dead":
-            run_manifest.add(manifest.SourceResult(
+            result = manifest.SourceResult(
                 shelter=shelter["name"], listing_url=shelter["listing_url"],
-                render=render_kind, status=manifest.STATUS_SKIPPED_DEAD))
-            continue
-        resolved = registry.resolve(shelter)
-        if resolved is None:
-            reason = ("JS-rendered, no code parser" if render_kind == "js"
-                      else "no code parser for this site")
-            run_manifest.add(manifest.SourceResult(
-                shelter=shelter["name"], listing_url=shelter["listing_url"],
-                render=render_kind, status=manifest.STATUS_NEEDS_BROWSER, error=reason))
-            continue
-        module, url = resolved
-        run_manifest.add(_collect_source(shelter, module, url, state, present, ts))
+                render=render_kind, status=manifest.STATUS_SKIPPED_DEAD)
+        else:
+            resolved = registry.resolve(shelter)
+            if resolved is None:
+                reason = ("JS-rendered, no code parser" if render_kind == "js"
+                          else "no code parser for this site")
+                result = manifest.SourceResult(
+                    shelter=shelter["name"], listing_url=shelter["listing_url"],
+                    render=render_kind, status=manifest.STATUS_NEEDS_BROWSER, error=reason)
+            else:
+                module, url = resolved
+                result = _collect_source(shelter, module, url, state, present, ts)
+        run_manifest.add(result)
+        logger.info("[%2d/%d] %-13s %s%s", index, total, result.status,
+                    shelter["name"], _result_detail(result))
 
     flagged = store.flag_disappeared(state, present, ts)
+    if flagged:
+        logger.info("flagged %d qualified dog(s) as maybe_adopted (vanished this run)", len(flagged))
     store.save_state(state_path, state)
 
     pending = store.pending_listings(state)
+    logger.info("collect done: %d pending dog(s) need a verdict", len(pending))
     with open(os.path.join(out_dir, "pending.json"), "w", encoding="utf-8") as out:
         json.dump({"run_ts": ts, "pending": pending}, out, indent=2, ensure_ascii=False)
     run_manifest.write(os.path.join(out_dir, "fetch_manifest.json"))
@@ -181,10 +207,15 @@ def apply(state_path: str, verdicts_path: str, index_path: str) -> int:
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     state = store.load_state(state_path)
     verdicts = _load_verdicts(verdicts_path) if os.path.exists(verdicts_path) else []
+    if not verdicts:
+        logger.warning("apply: no verdicts found at %s; re-rendering from existing state", verdicts_path)
+    else:
+        logger.info("apply: merging %d verdict(s) into state", len(verdicts))
     store.apply_verdicts(state, verdicts, ts)
     store.save_state(state_path, state)
 
     qualified = store.qualified_for_render(state)
+    logger.info("apply: index now lists %d qualified dog(s)", len(qualified))
     with open(index_path, encoding="utf-8") as handle:
         current_md = handle.read()
     updated = render.render_index(current_md, qualified, datetime.now().strftime("%Y-%m-%d"))
@@ -196,6 +227,8 @@ def apply(state_path: str, verdicts_path: str, index_path: str) -> int:
 def main() -> int:
     """Parse CLI args, dispatch to collect/apply, and print a one-line summary."""
     parser = argparse.ArgumentParser(description="dog-finder pipeline")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="log each new dog as its detail page is fetched")
     sub = parser.add_subparsers(dest="command", required=True)
 
     collect_parser = sub.add_parser("collect", help="fetch/parse/dedup into state + pending.json")
@@ -209,6 +242,11 @@ def main() -> int:
     apply_parser.add_argument("--index", required=True)
 
     args = parser.parse_args()
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+        datefmt="%H:%M:%S",
+    )
     if args.command == "collect":
         stats = collect(args.shelters, args.state, args.out)
         print(
