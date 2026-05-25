@@ -215,7 +215,11 @@ def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
         logger.info("[%2d/%d] %-13s %s%s", index, total, result.status,
                     shelter["name"], _result_detail(result))
 
-    flagged = store.flag_disappeared(state, present, ts)
+    fetched_shelters = {
+        source.shelter for source in run_manifest.sources
+        if source.status in (manifest.STATUS_OK, manifest.STATUS_EMPTY_OK)
+    }
+    flagged = store.flag_disappeared(state, present, ts, fetched_shelters)
     if flagged:
         logger.info("flagged %d qualified dog(s) as maybe_adopted (vanished this run)", len(flagged))
     store.save_state(state_path, state)

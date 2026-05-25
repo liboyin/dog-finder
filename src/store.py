@@ -108,17 +108,24 @@ def touch(state: dict, url: str, ts: str) -> None:
         entry["last_seen"] = ts
 
 
-def flag_disappeared(state: dict, present: set[str], ts: str) -> list[dict]:
-    """Flag qualified PetRescue dogs that vanished from this run's pages.
+def flag_disappeared(
+    state: dict, present: set[str], ts: str, fetched_shelters: set[str]
+) -> list[dict]:
+    """Flag qualified dogs that vanished from this run's successfully-fetched shelters.
 
-    A qualified, non-removed PetRescue listing not seen this run is a likely
-    adoption, but could also be a transient fetch gap, so it is flagged
-    ``recheck = "maybe_adopted"`` for the LLM to confirm rather than removed here.
+    A qualified, non-removed listing not seen this run is a likely adoption, but
+    could also be a transient fetch gap, so it is flagged ``recheck =
+    "maybe_adopted"`` for the LLM to confirm rather than removed here. Flagging is
+    scoped to ``fetched_shelters``: a dog whose shelter failed (or wasn't scanned)
+    this run is not flagged, so a single shelter outage can't mark its still-listed
+    dogs as maybe-adopted.
 
     Args:
         state: The state document (mutated in place).
         present: Canonical URLs seen on successfully-fetched pages this run.
         ts: This run's timestamp.
+        fetched_shelters: Names of shelters whose fetch succeeded this run (OK or
+            EMPTY_OK). Only dogs belonging to one of these are eligible for flagging.
 
     Returns:
         The list of entries newly flagged for re-check.
@@ -127,6 +134,7 @@ def flag_disappeared(state: dict, present: set[str], ts: str) -> list[dict]:
     for entry in state["listings"].values():
         if (
             entry.get("source_kind") != "browser"
+            and entry.get("shelter") in fetched_shelters
             and entry.get("verdict") == QUALIFIED
             and not entry.get("removed")
             and entry["url"] not in present

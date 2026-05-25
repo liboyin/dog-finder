@@ -41,15 +41,26 @@ class PendingAndDisappearTest(unittest.TestCase):
         self.assertEqual(urls, {"https://x/listings/1", "https://x/listings/2"})
 
     def test_flag_disappeared(self):
-        """A qualified PetRescue dog absent from this run is flagged maybe_adopted."""
+        """A qualified dog absent from its successfully-fetched shelter is flagged."""
         state = store.empty_state()
         state["listings"]["https://x/listings/9"] = {
             "url": "https://x/listings/9", "verdict": store.QUALIFIED, "removed": False,
-            "source_kind": "petrescue", "recheck": None,
+            "source_kind": "petrescue", "recheck": None, "shelter": "Shelter A",
         }
-        flagged = store.flag_disappeared(state, present=set(), ts=TS2)
+        flagged = store.flag_disappeared(state, present=set(), ts=TS2, fetched_shelters={"Shelter A"})
         self.assertEqual(len(flagged), 1)
         self.assertEqual(state["listings"]["https://x/listings/9"]["recheck"], "maybe_adopted")
+
+    def test_disappeared_not_flagged_when_shelter_unfetched(self):
+        """A dog whose shelter failed/wasn't scanned this run is not flagged."""
+        state = store.empty_state()
+        state["listings"]["https://x/listings/9"] = {
+            "url": "https://x/listings/9", "verdict": store.QUALIFIED, "removed": False,
+            "source_kind": "petrescue", "recheck": None, "shelter": "Shelter A",
+        }
+        flagged = store.flag_disappeared(state, present=set(), ts=TS2, fetched_shelters={"Shelter B"})
+        self.assertEqual(flagged, [])
+        self.assertIsNone(state["listings"]["https://x/listings/9"]["recheck"])
 
 
 class PruneStaleTest(unittest.TestCase):
