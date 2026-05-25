@@ -36,6 +36,18 @@ class ParseListTest(unittest.TestCase):
             doggierescue.parse_list("<div class='mdr_dog'></div>")
 
 
+class PaginationTest(unittest.TestCase):
+    def test_next_page_from_list_fixture(self):
+        """The list fixture's pager yields the next ?sf_paged= page URL."""
+        nxt = doggierescue.next_page_url(_load("doggierescue_list.html"), "https://www.doggierescue.com/search-pets/individual-dogs/")
+        self.assertIsNotNone(nxt)
+        self.assertIn("sf_paged=2", nxt)
+
+    def test_no_next_link_returns_none(self):
+        """A page without a next page-numbers link is the last page."""
+        self.assertIsNone(doggierescue.next_page_url("<ul class='pagination'></ul>", "https://www.doggierescue.com/x"))
+
+
 class ParseDetailTest(unittest.TestCase):
     def test_detail_fills_breed_sex_age_size_fee(self):
         """The detail fixture enriches a listing with its labelled fields."""

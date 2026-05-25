@@ -7,6 +7,7 @@ sex, age, size, and fee live on the per-dog detail page, where each field is an
 """
 from __future__ import annotations
 
+import html
 import re
 
 from src.parsers.base import Listing, ParseError, clean
@@ -16,6 +17,11 @@ DOG_URL = "https://www.doggierescue.com/dogs/{id}/"
 
 _CARD_RE = re.compile(r"post-(\d+) mdr_dog.*?title='([^']+)'", re.S)
 _GRID_MARKER = "mdr_dog"
+# WordPress page-numbers pager: the "next" link carries the next ?sf_paged= URL.
+_NEXT_TAG_RE = re.compile(
+    r"<a[^>]*class=['\"][^'\"]*\bnext\b[^'\"]*page-numbers[^'\"]*['\"][^>]*>", re.I
+)
+_HREF_RE = re.compile(r"href=['\"]([^'\"]+)['\"]")
 
 
 def parse_list(html_text: str) -> list[Listing]:
@@ -43,6 +49,24 @@ def parse_list(html_text: str) -> list[Listing]:
     if not listings and _GRID_MARKER in html_text:
         raise ParseError("Doggie Rescue dog grid present but no posts parsed (drift)")
     return listings
+
+
+def next_page_url(html_text: str, current_url: str) -> str | None:
+    """Return the next ``?sf_paged=`` page URL, or None on the last page.
+
+    Args:
+        html_text: Raw HTML of the current individual-dogs page.
+        current_url: The URL the current page was fetched from (unused; the next
+            link is absolute and self-contained).
+
+    Returns:
+        The next page's absolute URL, or None when the pager has no next link.
+    """
+    tag = _NEXT_TAG_RE.search(html_text)
+    if tag is None:
+        return None
+    href = _HREF_RE.search(tag.group(0))
+    return html.unescape(href.group(1)) if href else None
 
 
 def _value_after(label: str, html_text: str) -> str | None:
