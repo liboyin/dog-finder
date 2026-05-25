@@ -5,8 +5,7 @@ shelters within ~4 hours of Sydney (NSW + ACT). A scheduled job runs every night
 maintains a single human-reviewed markdown index, [`data/dog-index.md`](data/dog-index.md):
 prepending newly-found qualifying dogs and pruning ones that have been adopted.
 
-This document explains *why* the project is shaped the way it is. For step-by-step
-operational commands and the in-progress refactor plan, see [`HANDOVER.md`](HANDOVER.md).
+This document explains *why* the project is shaped the way it is.
 
 ## What it produces
 
