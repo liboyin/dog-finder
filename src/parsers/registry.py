@@ -8,15 +8,27 @@ cross-posts to PetRescue is still handled in code via that cross-post.
 """
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 from src.parsers import doggierescue, petrescue, wollongong
 
-# (host substrings, parser module). First match wins. Entries are added here as
+# (registered host, parser module). First match wins. Entries are added here as
 # each site parser lands.
 _REGISTRY = [
-    (("petrescue.com.au",), petrescue),
-    (("doggierescue.com",), doggierescue),
-    (("wollongong.nsw.gov.au/residents/pets/find-a-pet/find-a-dog",), wollongong),
+    ("petrescue.com.au", petrescue),
+    ("doggierescue.com", doggierescue),
+    ("wollongong.nsw.gov.au", wollongong),
 ]
+
+
+def _host_matches(url: str, host: str) -> bool:
+    """True if url's hostname equals host or is a subdomain of it.
+
+    Matches on the parsed hostname (not a raw substring) so a lookalike domain
+    like ``sydneypetrescue.com.au`` does not match ``petrescue.com.au``.
+    """
+    netloc = urlsplit(url).netloc.lower()
+    return netloc == host or netloc.endswith("." + host)
 
 
 def resolve(shelter: dict):
@@ -30,8 +42,8 @@ def resolve(shelter: dict):
         or None when no registered parser matches (the pipeline then flags the
         shelter NEEDS_BROWSER).
     """
-    for hosts, module in _REGISTRY:
+    for host, module in _REGISTRY:
         for candidate in (shelter.get("listing_url", ""), shelter.get("petrescue_url", "")):
-            if candidate and any(host in candidate for host in hosts):
+            if candidate and _host_matches(candidate, host):
                 return module, candidate
     return None

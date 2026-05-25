@@ -32,7 +32,8 @@ SOURCE_KIND = "petrescue"
 BASE_URL = "https://www.petrescue.com.au"
 
 _CARD_RE = re.compile(
-    r"<a class='cards-listings-preview__content' href='(/listings/\d+)'>(.*?)</a>",
+    r"<a class='cards-listings-preview__content' "
+    r"href='((?:https?://[^']*)?/listings/\d+)'>(.*?)</a>",
     re.S,
 )
 _H3_RE = re.compile(r"<h3>(.*?)</h3>", re.S)
@@ -77,7 +78,7 @@ def parse_list(html_text: str) -> list[Listing]:
         size, sex, _ = split_species(species_phrase)
         listings.append(
             Listing(
-                url=BASE_URL + href,
+                url=href if href.startswith("http") else BASE_URL + href,
                 name=name,
                 size=size,
                 sex=sex,

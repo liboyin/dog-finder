@@ -63,6 +63,14 @@ class ParseListTest(unittest.TestCase):
         self.assertTrue(non_dogs, "fixture should contain at least one non-dog (rabbit)")
         self.assertNotIn("Tinkerbell", [l.name for l in dogs])
 
+    def test_search_page_absolute_hrefs(self):
+        """Search-aggregator cards use absolute hrefs and still parse to listing URLs."""
+        listings = petrescue.parse_list(_load("petrescue_search.html"))
+        self.assertGreater(len(listings), 0)
+        for listing in listings:
+            self.assertRegex(listing.url, r"^https://www\.petrescue\.com\.au/listings/\d+$")
+            self.assertIsNotNone(listing.name)
+
     def test_empty_page_returns_empty_list(self):
         """A page with no cards returns [] rather than raising."""
         self.assertEqual(petrescue.parse_list("<html><body>no cards</body></html>"), [])
