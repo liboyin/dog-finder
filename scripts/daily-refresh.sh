@@ -4,8 +4,8 @@
 # Lives outside ~/Documents so the launchd agent isn't blocked by macOS TCC.
 #
 # Each run gets a folder runs/<ts>/ holding: the deterministic pipeline output
-# (candidates.json + fetch_manifest.json), the full LLM event stream
-# (run.stream.jsonl), and the readable report (report.txt).
+# (pending.json + fetch_manifest.json), the LLM's verdicts.json, the full event
+# stream (run.stream.jsonl), and the readable report (report.txt).
 #
 # Flow: a stdlib Python pipeline does fetch/parse/dedup for static PetRescue
 # shelters FIRST, then the LLM judges the resulting candidates and drives the

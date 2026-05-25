@@ -11,7 +11,7 @@ import json
 import re
 
 from src.dedup import canonical
-from src.parsers.petrescue import Listing
+from src.parsers.base import Listing
 
 STATE_VERSION = 1
 
