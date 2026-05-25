@@ -83,6 +83,19 @@ echo "$(date '+%F %T %Z') apply verdicts -> $INDEX" >> "$LOG"
   --index "$INDEX" >> "$LOG" 2>&1 \
   || echo "$(date '+%F %T %Z') WARN: apply exited non-zero; index may be stale" >> "$LOG"
 
+# Commit this run's index/state if they changed, so git keeps the daily history.
+# Only these two tracked files are staged; runs/ and logs/ stay gitignored.
+if [ -n "$(git status --porcelain -- "$INDEX" "$STATE")" ]; then
+  git add "$INDEX" "$STATE"
+  if git commit -m "Automated run on $(date '+%F')" >> "$LOG" 2>&1; then
+    echo "$(date '+%F %T %Z') committed index/state changes" >> "$LOG"
+  else
+    echo "$(date '+%F %T %Z') WARN: git commit of index/state failed" >> "$LOG"
+  fi
+else
+  echo "$(date '+%F %T %Z') no index/state changes to commit" >> "$LOG"
+fi
+
 # Tier 1: parse the final result event for aggregate + per-model usage.
 python3 "$DIR/src/parse_usage.py" "$STREAM" "$REPORT" "$TS" "$CODE" >> "$USAGE_LOG" 2>>"$LOG"
 

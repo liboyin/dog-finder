@@ -58,7 +58,9 @@ the prose Markdown:
 - **Git tracks the valuable artifacts and their inputs.** `state.json` (the authoritative
   record), the rendered index, shelter config, prompt, code, and deploy files are tracked. The
   per-run artifacts (`pending.json`, `verdicts.json`, `fetch_manifest.json`, stream/report) and
-  logs are generated, not authored, so they are gitignored under `runs/` and `logs/`.
+  logs are generated, not authored, so they are gitignored under `runs/` and `logs/`. Each
+  nightly run auto-commits any change to `state.json`/`dog-index.md` (`Automated run on
+  YYYY-MM-DD`) so the day-to-day history lives in git.
 
 ## Assumptions
 
