@@ -1,21 +1,21 @@
-"""dog-finder pipeline: fetch + parse + dedup PetRescue shelters into candidates.
+"""dog-finder pipeline: deterministic fetch/parse/dedup around an LLM judge.
 
-Run as a module from the repo root::
+Two subcommands frame one nightly run:
 
-    python3 -m src.pipeline --shelters config/shelters.json \\
-        --index data/dog-index.md --out runs/<ts>/
+* ``collect`` — fetch and parse the server-rendered PetRescue shelters, dedup
+  against ``state.json``, detail-fetch genuinely new dogs, flag qualified dogs
+  that vanished as ``maybe_adopted``, and write ``pending.json`` (dogs needing a
+  verdict) plus ``fetch_manifest.json`` (per-source outcomes, incl. the
+  ``NEEDS_BROWSER`` shelters the LLM must handle via the browser MCP).
+* ``apply`` — merge the LLM's ``verdicts.json`` into ``state.json`` and
+  re-render the human-facing ``dog-index.md`` from state.
 
-It writes two files into ``--out``:
+Run from the repo root::
 
-* ``candidates.json`` — new listings (not already in the index) with breed/fee
-  filled from each listing's detail page, for the LLM to judge.
-* ``fetch_manifest.json`` — per-source outcomes (OK / EMPTY_OK / PARSE_ERROR /
-  FETCH_ERROR / NEEDS_BROWSER / SKIPPED_DEAD) for shelter-level observability.
-
-Static PetRescue pages are parsed in code. A ``render:js`` shelter is still
-handled in code when it has a PetRescue cross-post (its static listing). Other
-``render:js`` shelters and non-PetRescue own-sites are flagged ``NEEDS_BROWSER``
-so the LLM drives them via Playwright/Chrome MCP.
+    python3 -m src.pipeline collect --shelters config/shelters.json \\
+        --state data/state.json --out runs/<ts>/
+    python3 -m src.pipeline apply --state data/state.json \\
+        --verdicts runs/<ts>/verdicts.json --index data/dog-index.md
 """
 from __future__ import annotations
 
@@ -25,7 +25,8 @@ import os
 import time
 from datetime import datetime
 
-from src import dedup, manifest
+from src import manifest, render, store
+from src.dedup import canonical
 from src.fetch import FetchError, fetch
 from src.parsers import petrescue
 from src.parsers.petrescue import ParseError
@@ -45,26 +46,26 @@ def _petrescue_url(shelter: dict) -> str | None:
     return None
 
 
-def _process_petrescue(
-    shelter: dict, url: str, known: set[str], seen: set[str]
-) -> tuple[manifest.SourceResult, list[petrescue.Listing]]:
-    """Fetch and parse one PetRescue page into new candidate listings.
+def _collect_petrescue(
+    shelter: dict, url: str, state: dict, present: set[str], ts: str
+) -> manifest.SourceResult:
+    """Fetch a PetRescue page, upserting its dogs into state.
 
     Args:
         shelter: The shelter config entry.
-        url: The PetRescue page URL to fetch.
-        known: Canonical URLs already in the index (skip these).
-        seen: Canonical URLs already emitted this run (mutated to dedup across
-            sources).
+        url: PetRescue page URL to fetch.
+        state: The state document (mutated in place).
+        present: Set of canonical URLs seen on OK pages this run (mutated).
+        ts: This run's timestamp.
 
     Returns:
-        A (SourceResult, listings) tuple. ``listings`` holds the new, enriched
-        candidates from this source (possibly empty).
+        The SourceResult describing this source's outcome.
     """
     name = shelter["name"]
     base = manifest.SourceResult(
-        shelter=name, listing_url=shelter["listing_url"], render=shelter.get("render", "static"),
-        status=manifest.STATUS_OK, fetched_url=url,
+        shelter=name, listing_url=shelter["listing_url"],
+        render=shelter.get("render", "static"), status=manifest.STATUS_OK,
+        fetched_url=url,
     )
 
     try:
@@ -72,130 +73,160 @@ def _process_petrescue(
     except FetchError as error:
         base.status = manifest.STATUS_FETCH_ERROR
         base.error = str(error)
-        return base, []
+        return base
 
     base.http_status = result.status
     base.bytes = result.bytes
-
     try:
         cards = petrescue.parse_list(result.body)
     except ParseError as error:
         base.status = manifest.STATUS_PARSE_ERROR
         base.error = str(error)
-        return base, []
+        return base
 
     base.n_cards = len(cards)
     if not cards:
         base.status = manifest.STATUS_EMPTY_OK
         base.n_new = 0
-        return base, []
+        return base
 
-    dog_cards = [card for card in cards if petrescue.is_dog(card)]
-    new_listings: list[petrescue.Listing] = []
-    detail_errors = 0
-    for card in dog_cards:
-        canonical_url = dedup.canonical(card.url)
-        if canonical_url in known or canonical_url in seen:
+    n_new = 0
+    for card in (c for c in cards if petrescue.is_dog(c)):
+        key = canonical(card.url)
+        present.add(key)
+        if key in state["listings"]:
+            store.touch(state, card.url, ts)
             continue
-        seen.add(canonical_url)
         card.shelter = name
         try:
             detail = fetch(card.url)
             petrescue.parse_detail(detail.body, card)
         except (FetchError, ParseError) as error:
-            detail_errors += 1
-            base.error = f"{detail_errors} detail fetch/parse error(s); last: {error}"
-        new_listings.append(card)
+            base.error = f"detail fetch/parse issue: {error}"
+        store.upsert_petrescue(state, card, ts)
+        n_new += 1
         time.sleep(DETAIL_FETCH_DELAY_S)
 
-    base.n_new = len(new_listings)
-    return base, new_listings
+    base.n_new = n_new
+    return base
 
 
-def run(shelters_path: str, index_path: str, out_dir: str) -> manifest.Manifest:
-    """Execute the pipeline and write candidates.json + fetch_manifest.json.
+def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
+    """Run the collect phase: update state and write pending.json + manifest.
 
     Args:
         shelters_path: Path to config/shelters.json.
-        index_path: Path to data/dog-index.md.
-        out_dir: Directory to write run artifacts into (created if absent).
+        state_path: Path to data/state.json (created if absent).
+        out_dir: Directory for this run's artifacts (created if absent).
 
     Returns:
-        The populated Manifest (also written to disk).
+        A stats dict: n_new, n_needs_browser, n_errors, n_maybe_adopted.
     """
-    run_ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs(out_dir, exist_ok=True)
 
     with open(shelters_path, encoding="utf-8") as handle:
         shelters = json.load(handle)
-    with open(index_path, encoding="utf-8") as handle:
-        known = dedup.known_urls(handle.read())
+    state = store.load_state(state_path)
 
-    run_manifest = manifest.Manifest(run_ts=run_ts)
-    candidates: list[petrescue.Listing] = []
-    seen: set[str] = set()
+    run_manifest = manifest.Manifest(run_ts=ts)
+    present: set[str] = set()
 
     for shelter in shelters:
-        render = shelter.get("render", "static")
-        if render == "dead":
-            run_manifest.add(
-                manifest.SourceResult(
-                    shelter=shelter["name"], listing_url=shelter["listing_url"],
-                    render=render, status=manifest.STATUS_SKIPPED_DEAD,
-                )
-            )
+        render_kind = shelter.get("render", "static")
+        if render_kind == "dead":
+            run_manifest.add(manifest.SourceResult(
+                shelter=shelter["name"], listing_url=shelter["listing_url"],
+                render=render_kind, status=manifest.STATUS_SKIPPED_DEAD))
             continue
-
         url = _petrescue_url(shelter)
         if url is None:
-            reason = "JS-rendered, no PetRescue cross-post" if render == "js" else "no code parser for this site"
-            run_manifest.add(
-                manifest.SourceResult(
-                    shelter=shelter["name"], listing_url=shelter["listing_url"],
-                    render=render, status=manifest.STATUS_NEEDS_BROWSER, error=reason,
-                )
-            )
+            reason = ("JS-rendered, no PetRescue cross-post" if render_kind == "js"
+                      else "no code parser for this site")
+            run_manifest.add(manifest.SourceResult(
+                shelter=shelter["name"], listing_url=shelter["listing_url"],
+                render=render_kind, status=manifest.STATUS_NEEDS_BROWSER, error=reason))
             continue
+        run_manifest.add(_collect_petrescue(shelter, url, state, present, ts))
 
-        source_result, new_listings = _process_petrescue(shelter, url, known, seen)
-        run_manifest.add(source_result)
-        candidates.extend(new_listings)
+    flagged = store.flag_disappeared(state, present, ts)
+    store.save_state(state_path, state)
 
-    _write_candidates(os.path.join(out_dir, "candidates.json"), run_ts, candidates)
+    pending = store.pending_listings(state)
+    with open(os.path.join(out_dir, "pending.json"), "w", encoding="utf-8") as out:
+        json.dump({"run_ts": ts, "pending": pending}, out, indent=2, ensure_ascii=False)
     run_manifest.write(os.path.join(out_dir, "fetch_manifest.json"))
-    return run_manifest
 
-
-def _write_candidates(path: str, run_ts: str, candidates: list[petrescue.Listing]) -> None:
-    """Write the candidate listings to a compact JSON file."""
-    payload = {
-        "run_ts": run_ts,
-        "generated_at": datetime.now().isoformat(timespec="seconds"),
-        "candidates": [listing.to_dict() for listing in candidates],
+    return {
+        "n_new": sum((s.n_new or 0) for s in run_manifest.sources),
+        "n_needs_browser": sum(s.status == manifest.STATUS_NEEDS_BROWSER for s in run_manifest.sources),
+        "n_errors": sum(s.status in (manifest.STATUS_PARSE_ERROR, manifest.STATUS_FETCH_ERROR, manifest.STATUS_EMPTY_OK) for s in run_manifest.sources),
+        "n_maybe_adopted": len(flagged),
+        "n_pending": len(pending),
     }
-    with open(path, "w", encoding="utf-8") as out:
-        json.dump(payload, out, indent=2, ensure_ascii=False)
+
+
+def _load_verdicts(path: str) -> list[dict]:
+    """Load verdicts.json, accepting either a bare list or a {"verdicts": [...]} dict."""
+    with open(path, encoding="utf-8") as handle:
+        data = json.load(handle)
+    if isinstance(data, dict):
+        return data.get("verdicts", [])
+    return data
+
+
+def apply(state_path: str, verdicts_path: str, index_path: str) -> int:
+    """Run the apply phase: merge verdicts and re-render the index.
+
+    Args:
+        state_path: Path to data/state.json.
+        verdicts_path: Path to the LLM-produced verdicts.json.
+        index_path: Path to data/dog-index.md (re-rendered in place).
+
+    Returns:
+        The number of qualified, non-removed listings now in the index.
+    """
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    state = store.load_state(state_path)
+    verdicts = _load_verdicts(verdicts_path) if os.path.exists(verdicts_path) else []
+    store.apply_verdicts(state, verdicts, ts)
+    store.save_state(state_path, state)
+
+    qualified = store.qualified_for_render(state)
+    with open(index_path, encoding="utf-8") as handle:
+        current_md = handle.read()
+    updated = render.render_index(current_md, qualified, datetime.now().strftime("%Y-%m-%d"))
+    with open(index_path, "w", encoding="utf-8") as out:
+        out.write(updated)
+    return len(qualified)
 
 
 def main() -> int:
-    """Parse CLI arguments, run the pipeline, and print a one-line summary."""
-    parser = argparse.ArgumentParser(description="dog-finder fetch/parse/dedup pipeline")
-    parser.add_argument("--shelters", required=True, help="path to shelters.json")
-    parser.add_argument("--index", required=True, help="path to dog-index.md")
-    parser.add_argument("--out", required=True, help="output directory for run artifacts")
-    args = parser.parse_args()
+    """Parse CLI args, dispatch to collect/apply, and print a one-line summary."""
+    parser = argparse.ArgumentParser(description="dog-finder pipeline")
+    sub = parser.add_subparsers(dest="command", required=True)
 
-    result = run(args.shelters, args.index, args.out)
-    n_candidates = sum((source.n_new or 0) for source in result.sources)
-    n_needs_browser = sum(s.status == manifest.STATUS_NEEDS_BROWSER for s in result.sources)
-    n_errors = sum(
-        s.status in (manifest.STATUS_PARSE_ERROR, manifest.STATUS_FETCH_ERROR, manifest.STATUS_EMPTY_OK)
-        for s in result.sources
-    )
-    print(
-        f"pipeline complete: {n_candidates} new candidates, "
-        f"{n_needs_browser} need browser, {n_errors} source error(s); out={args.out}"
-    )
+    collect_parser = sub.add_parser("collect", help="fetch/parse/dedup into state + pending.json")
+    collect_parser.add_argument("--shelters", required=True)
+    collect_parser.add_argument("--state", required=True)
+    collect_parser.add_argument("--out", required=True)
+
+    apply_parser = sub.add_parser("apply", help="merge verdicts.json and re-render the index")
+    apply_parser.add_argument("--state", required=True)
+    apply_parser.add_argument("--verdicts", required=True)
+    apply_parser.add_argument("--index", required=True)
+
+    args = parser.parse_args()
+    if args.command == "collect":
+        stats = collect(args.shelters, args.state, args.out)
+        print(
+            f"collect complete: {stats['n_new']} new, {stats['n_pending']} pending, "
+            f"{stats['n_maybe_adopted']} maybe-adopted, {stats['n_needs_browser']} need browser, "
+            f"{stats['n_errors']} source error(s)"
+        )
+    else:
+        n_qualified = apply(args.state, args.verdicts, args.index)
+        print(f"apply complete: index now lists {n_qualified} qualified dog(s)")
     return 0
 
 
