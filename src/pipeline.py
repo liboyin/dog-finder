@@ -43,7 +43,8 @@ def _result_detail(result: manifest.SourceResult) -> str:
     """Build the human-readable tail for a per-shelter log line."""
     if result.status in (manifest.STATUS_OK, manifest.STATUS_EMPTY_OK):
         pages = f", {result.n_pages}p" if (result.n_pages or 0) > 1 else ""
-        return f" — {result.n_cards or 0} cards, {result.n_new or 0} new{pages}"
+        suffix = f"; {result.error}" if result.error else ""
+        return f" — {result.n_cards or 0} cards, {result.n_new or 0} new{pages}{suffix}"
     if result.error:
         return f" — {result.error}"
     return ""
@@ -155,6 +156,7 @@ def _collect_source(
     if new_cards and has_detail:
         logger.info("    %s: fetching %d new detail page(s)", name, len(new_cards))
     source_kind = getattr(module, "SOURCE_KIND", "petrescue")
+    detail_errors: list[str] = []
     for card in new_cards:
         card.shelter = card.shelter or name
         if has_detail:
@@ -162,11 +164,14 @@ def _collect_source(
                 detail = fetch(card.url)
                 module.parse_detail(detail.body, card)
             except (FetchError, ParseError) as error:
-                base.error = f"detail fetch/parse issue: {error}"
+                detail_errors.append(str(error))
             time.sleep(DETAIL_FETCH_DELAY_S)
         store.upsert_listing(state, card, ts, source_kind)
         logger.debug("      + %s — %s", card.name, card.breed)
 
+    if detail_errors:
+        note = f"{len(detail_errors)} detail fetch/parse failure(s); first: {detail_errors[0]}"
+        base.error = f"{base.error}; {note}" if base.error else note
     base.n_new = len(new_cards)
     return base
 

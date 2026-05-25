@@ -7,7 +7,7 @@ from unittest import mock
 
 from src import pipeline, store
 from src.fetch import FetchError, FetchResult
-from src.parsers.base import Listing
+from src.parsers.base import Listing, ParseError
 
 
 def _fr(url: str) -> FetchResult:
@@ -59,6 +59,23 @@ class PaginationLoopTest(unittest.TestCase):
         with mock.patch.object(pipeline, "fetch", side_effect=boom):
             res = pipeline._collect_source({"name": "F", "listing_url": "p1"}, _module({}), "p1", store.empty_state(), set(), "TS")
         self.assertEqual(res.status, "FETCH_ERROR")
+
+    def test_detail_error_recorded_but_status_ok(self):
+        """A failing detail fetch is noted in error, status stays OK, card still upserted."""
+        def bad_detail(body, listing):
+            raise ParseError("bad detail")
+        mod = types.SimpleNamespace(
+            SOURCE_KIND="fake",
+            parse_list=lambda body: [Listing(url="https://x/1")] if body == "p1" else [],
+            next_page_url=lambda body, current: None,
+            parse_detail=bad_detail,
+        )
+        state = store.empty_state()
+        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)):
+            res = pipeline._collect_source({"name": "F", "listing_url": "p1"}, mod, "p1", state, set(), "TS")
+        self.assertEqual(res.status, "OK")
+        self.assertIn("detail fetch/parse failure", res.error or "")
+        self.assertIn("https://x/1", state["listings"])
 
     def test_max_pages_cap(self):
         """An endless pager stops at MAX_PAGES and notes the cap."""
