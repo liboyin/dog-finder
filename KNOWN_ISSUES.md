@@ -4,12 +4,6 @@ Open issues found in code review, ordered by impact. Each lists the affected
 location, the impact, and a suggested fix. Resolved issues should be removed,
 not struck through — git history is the record.
 
-## 2. `state.json` is written non-atomically
-
-- **Where:** `save_state` in [src/store.py](src/store.py).
-- **Impact:** The authoritative record is written directly to its target path. In the unattended nightly job, a crash or kill mid-`json.dump` leaves a truncated file; the next run's `load_state` then fails with `JSONDecodeError` and the whole pipeline is down until a human restores it from git.
-- **Suggested fix:** Write to a temp file in the same directory and `os.replace()` it onto the target (atomic on POSIX), so an interrupted write never corrupts the existing state.
-
 ## 3. Detail-fetch failures are silently under-reported
 
 - **Where:** the detail-fetch loop in `_collect_source`, [src/pipeline.py](src/pipeline.py).

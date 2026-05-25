@@ -1,6 +1,8 @@
 """Tests for the state store: upsert, dedup, disappearance flagging, verdicts, seed."""
 from __future__ import annotations
 
+import os
+import tempfile
 import unittest
 
 from src import store
@@ -26,6 +28,18 @@ class UpsertTest(unittest.TestCase):
         self.assertEqual(entry["first_seen"], TS1)
         self.assertEqual(entry["last_seen"], TS2)
         self.assertEqual(entry["status"], "on-hold")
+
+
+class SaveStateTest(unittest.TestCase):
+    def test_save_then_load_round_trips(self):
+        """save_state writes a file that load_state reads back identically."""
+        state = store.empty_state()
+        store.upsert_listing(state, _listing("https://x/listings/1", name="A"), TS1)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "state.json")
+            store.save_state(path, state)
+            self.assertEqual(store.load_state(path), state)
+            self.assertEqual([f for f in os.listdir(tmp) if f != "state.json"], [])
 
 
 class PendingAndDisappearTest(unittest.TestCase):

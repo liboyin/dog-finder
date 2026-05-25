@@ -8,7 +8,9 @@ the LLM only emits verdicts that ``apply_verdicts`` merges in.
 from __future__ import annotations
 
 import json
+import os
 import re
+import tempfile
 
 from src.dedup import canonical
 from src.parsers.base import Listing
@@ -43,14 +45,26 @@ def load_state(path: str) -> dict:
 
 
 def save_state(path: str, state: dict) -> None:
-    """Write the state document to disk as pretty JSON.
+    """Atomically write the state document to disk as pretty JSON.
+
+    The authoritative record is written to a temp file in the same directory and
+    then ``os.replace``-d onto ``path`` (an atomic rename on POSIX), so a crash or
+    kill mid-write leaves the previous state.json intact rather than truncated.
 
     Args:
         path: Destination path for state.json.
         state: The state dict to serialize.
     """
-    with open(path, "w", encoding="utf-8") as out:
-        json.dump(state, out, indent=2, ensure_ascii=False, sort_keys=True)
+    directory = os.path.dirname(path) or "."
+    fd, tmp_path = tempfile.mkstemp(dir=directory, prefix=".state-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            json.dump(state, out, indent=2, ensure_ascii=False, sort_keys=True)
+        os.replace(tmp_path, path)
+    except BaseException:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise
 
 
 def _entry_from_listing(listing: Listing, ts: str, source_kind: str) -> dict:
