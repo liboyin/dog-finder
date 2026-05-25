@@ -1,1 +1,1 @@
-tests/fixtures/*.html -text
+*.html -text
