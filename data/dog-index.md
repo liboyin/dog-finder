@@ -27,20 +27,6 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **date_indexed:** 2026-05-26
 - Female Shih Tzu, small, available in Bateau Bay NSW; pure low-shedding low-odour breed.
 
-### [NEW 2026-05-25] Teddy — Poodle (Toy), not stated, Male
-- **URL:** https://www.petrescue.com.au/listings/1193686
-- **Shelter:** Shoalhaven Animal Shelter (Council) (Nowra, NSW)
-- **Status:** available · **Fee:** $437.00 · **Size:** Small
-- **date_indexed:** 2026-05-25
-- Playful, housetrained 9-month-old Toy Poodle; food-motivated, loves cuddles and toys, suits an active family.
-
-### [NEW 2026-05-25] Gypsy — Shih Tzu, not stated, Female
-- **URL:** https://www.petrescue.com.au/listings/1193843
-- **Shelter:** RSPCA NSW Hunter Shelter (Rutherford) (Rutherford, NSW)
-- **Status:** available · **Fee:** $500.00 · **Size:** Small
-- **date_indexed:** 2026-05-25
-- Gentle, affectionate 5-year-old Shih Tzu suited to calm households with children 6+; loves cuddles and garden walks.
-
 ### [NEW 2026-05-25] Ella — Shih Tzu x Maltese cross, 9 years old (senior), female
 - **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/ella
 - **Shelter:** Wollongong Pet Connection (location unstated)
