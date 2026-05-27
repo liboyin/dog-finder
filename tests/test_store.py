@@ -120,39 +120,5 @@ class ApplyVerdictsTest(unittest.TestCase):
         self.assertEqual(store.qualified_for_render(state), [])
 
 
-class SeedTest(unittest.TestCase):
-    INDEX = """- **Last refreshed:** 2026-05-24
-
-## Current candidates
-
-### [NEW 2026-05-24] Kev — Poodle (Toy) x Pug, 10 months, male
-- **URL:** https://www.petrescue.com.au/listings/111
-- **Shelter:** Wollongong Shelter (Wollongong, NSW)
-- **Status:** available · **Fee:** not stated · **Size:** toy
-- **date_indexed:** 2026-05-24
-- A young toy poodle cross.
-
-## Recently adopted
-
-- https://www.petrescue.com.au/listings/222 — Miso (Mini Poodle, Ramsgate)
-
-## Monitored shelters
-"""
-
-    def test_seed_parses_current_and_adopted(self):
-        """Seeding captures current candidates faithfully and adopted URLs as removed."""
-        state = store.seed_from_index(self.INDEX, TS1)
-        kev = state["listings"]["https://www.petrescue.com.au/listings/111"]
-        self.assertEqual(kev["breed"], "Poodle (Toy) x Pug")
-        self.assertEqual(kev["age"], "10 months")
-        self.assertEqual(kev["sex"], "male")
-        self.assertEqual(kev["size"], "toy")
-        self.assertEqual(kev["shelter"], "Wollongong Shelter")
-        self.assertEqual(kev["location"], "Wollongong, NSW")
-        self.assertEqual(kev["verdict"], store.QUALIFIED)
-        miso = state["listings"]["https://www.petrescue.com.au/listings/222"]
-        self.assertTrue(miso["removed"])
-
-
 if __name__ == "__main__":
     unittest.main()

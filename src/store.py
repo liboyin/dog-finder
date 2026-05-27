@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import tempfile
 
 from src.dedup import canonical
@@ -239,97 +238,3 @@ def apply_verdicts(state: dict, verdicts: list[dict], ts: str) -> None:
             entry["removed"] = True
         # A judged listing no longer needs re-checking.
         entry["recheck"] = None
-
-
-# --- One-time migration from the legacy Markdown index --------------------
-
-_BLOCK_RE = re.compile(
-    r"^### \[NEW (\d{4}-\d{2}-\d{2})\] (.+?) — (.+?)\n"
-    r"- \*\*URL:\*\* (\S+)\n"
-    r"- \*\*Shelter:\*\* (.+?)\n"
-    r"- \*\*Status:\*\* (.+?)\n"
-    r"(?:- \*\*date_indexed:\*\* .+?\n)?"
-    r"- (.+?)(?=\n###|\n---|\n## |\Z)",
-    re.M | re.S,
-)
-_ADOPTED_RE = re.compile(r"^- (https?://\S+) — (.+)$", re.M)
-
-
-def _parse_headline(headline: str) -> tuple[str, str | None, str | None]:
-    """Split a '{breed}, {age}, {sex}' headline into its parts."""
-    parts = [p.strip() for p in headline.split(",")]
-    breed = parts[0]
-    rest = parts[1:]
-    sex = None
-    if rest and rest[-1].lower() in ("male", "female"):
-        sex = rest[-1]
-        rest = rest[:-1]
-    age = ", ".join(rest) or None
-    return breed, age, sex
-
-
-def _parse_shelter_line(line: str) -> tuple[str, str | None]:
-    """Split a 'Shelter Name (Location)' line into (shelter, location)."""
-    if line.rstrip().endswith(")") and " (" in line:
-        shelter, location = line.rstrip()[:-1].rsplit(" (", 1)
-        return shelter.strip(), location.strip()
-    return line.strip(), None
-
-
-def _parse_status_line(line: str) -> tuple[str | None, str | None, str | None]:
-    """Split a 'status · **Fee:** x · **Size:** y' line into (status, fee, size)."""
-    status = fee = size = None
-    for index, segment in enumerate(line.split(" · ")):
-        segment = segment.strip()
-        if segment.startswith("**Fee:**"):
-            fee = segment[len("**Fee:**"):].strip()
-        elif segment.startswith("**Size:**"):
-            size = segment[len("**Size:**"):].strip()
-        elif index == 0:
-            status = segment
-    return status, fee, size
-
-
-def seed_from_index(index_md: str, ts: str) -> dict:
-    """Build an initial state from the legacy dog-index.md (one-time migration).
-
-    Current-candidate blocks become qualified entries; recently-adopted bullets
-    become qualified+removed entries so their URLs stay known for dedup.
-
-    Args:
-        index_md: Full text of the legacy dog-index.md.
-        ts: Timestamp to record as last_seen for migrated entries.
-
-    Returns:
-        A populated state document.
-    """
-    state = empty_state()
-    current_section = index_md.split("## Recently adopted")[0]
-    for date, name, headline, url, shelter_line, status_line, summary in _BLOCK_RE.findall(current_section):
-        breed, age, sex = _parse_headline(headline)
-        shelter, location = _parse_shelter_line(shelter_line)
-        status, fee, size = _parse_status_line(status_line)
-        state["listings"][canonical(url)] = {
-            "url": url, "name": name.strip(), "breed": breed,
-            "age": age, "sex": sex, "size": size, "species": "dog",
-            "location": location, "shelter": shelter, "fee": fee,
-            "status": status, "source_kind": "petrescue",
-            "first_seen": date.replace("-", "") + "-000000", "last_seen": ts,
-            "verdict": QUALIFIED, "summary": summary.strip(), "tags": [],
-            "removed": False, "recheck": None,
-        }
-    if "## Recently adopted" in index_md:
-        adopted_section = index_md.split("## Recently adopted", 1)[1].split("\n## ")[0]
-        for url, label in _ADOPTED_RE.findall(adopted_section):
-            key = canonical(url)
-            if key in state["listings"]:
-                continue
-            state["listings"][key] = {
-                "url": url, "name": label.split("(")[0].strip(), "breed": None,
-                "age": None, "sex": None, "size": None, "species": "dog",
-                "location": None, "shelter": None, "fee": None, "status": "adopted",
-                "source_kind": "petrescue", "first_seen": ts, "last_seen": ts,
-                "verdict": QUALIFIED, "summary": None, "tags": [],
-                "removed": True, "recheck": None,
-            }
-    return state
