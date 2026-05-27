@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-05-26
+- **Last refreshed:** 2026-05-27
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -12,6 +12,20 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ## Current candidates
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
+
+### [NEW 2026-05-27] Bella — Shih Tzu, 3 years old (adult), female
+- **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/bella
+- **Shelter:** Wollongong Pet Connection (location unstated)
+- **Status:** available · **Fee:** not stated · **Size:** not stated
+- **date_indexed:** 2026-05-27
+- 3-year-old female Shih Tzu from Wollongong Pet Connection; established low-shedding, low-odour breed.
+
+### [NEW 2026-05-27] Louie — Shih Tzu x Lhasa Apso cross, 2 years old (adult), male
+- **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/louie
+- **Shelter:** Wollongong Pet Connection (location unstated)
+- **Status:** available · **Fee:** not stated · **Size:** not stated
+- **date_indexed:** 2026-05-27
+- 2-year-old male Shih Tzu x Lhasa Apso from Wollongong; both parents low-shedding and low-odour.
 
 ### [NEW 2026-05-26] Cinnamon — Poodle (Toy) Mix, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1191675
