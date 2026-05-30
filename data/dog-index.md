@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-05-29
+- **Last refreshed:** 2026-05-30
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -12,6 +12,27 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ## Current candidates
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
+
+### [NEW 2026-05-30] Shortbread — Shih Tzu, not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1194970
+- **Shelter:** RSPCA NSW Hunter Shelter (Rutherford) (Rutherford, NSW)
+- **Status:** available · **Fee:** $500.00 · **Size:** Small
+- **date_indexed:** 2026-05-30
+- Female Shih Tzu at RSPCA Hunter Shelter, Rutherford NSW; low-shedding small breed available for $500.
+
+### [NEW 2026-05-30] Scone — Shih Tzu, not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1194974
+- **Shelter:** RSPCA NSW Hunter Shelter (Rutherford) (Rutherford, NSW)
+- **Status:** available · **Fee:** $500.00 · **Size:** Small
+- **date_indexed:** 2026-05-30
+- Female Shih Tzu at RSPCA Hunter Shelter, Rutherford NSW; low-shedding small breed available for $500.
+
+### [NEW 2026-05-30] Beau — Poodle (Toy) x Maltese Mix, not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1194982
+- **Shelter:** Sydney Animal Second-Chance Inc. (Oatley, NSW)
+- **Status:** available · **Fee:** $650.00 · **Size:** Small
+- **date_indexed:** 2026-05-30
+- Small male Toy Poodle × Maltese mix at Sydney Animal Second-Chance, Oatley NSW; $650.
 
 ### [NEW 2026-05-27] Bella — Shih Tzu, 3 years old (adult), female
 - **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/bella
