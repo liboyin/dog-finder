@@ -27,20 +27,6 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **date_indexed:** 2026-05-31
 - Shih Tzu × Maltese male, 3 years, small, $400 at AWL Eurobodalla; qualifying low-shed cross.  _(verify drive time)_
 
-### [NEW 2026-05-30] Shortbread — Shih Tzu, not stated, Female
-- **URL:** https://www.petrescue.com.au/listings/1194970
-- **Shelter:** RSPCA NSW Hunter Shelter (Rutherford) (Rutherford, NSW)
-- **Status:** available · **Fee:** $500.00 · **Size:** Small
-- **date_indexed:** 2026-05-30
-- Female Shih Tzu at RSPCA Hunter Shelter, Rutherford NSW; low-shedding small breed available for $500.
-
-### [NEW 2026-05-30] Scone — Shih Tzu, not stated, Female
-- **URL:** https://www.petrescue.com.au/listings/1194974
-- **Shelter:** RSPCA NSW Hunter Shelter (Rutherford) (Rutherford, NSW)
-- **Status:** available · **Fee:** $500.00 · **Size:** Small
-- **date_indexed:** 2026-05-30
-- Female Shih Tzu at RSPCA Hunter Shelter, Rutherford NSW; low-shedding small breed available for $500.
-
 ### [NEW 2026-05-30] Beau — Poodle (Toy) x Maltese Mix, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1194982
 - **Shelter:** Sydney Animal Second-Chance Inc. (Oatley, NSW)
