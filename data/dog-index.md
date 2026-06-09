@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-06-08
+- **Last refreshed:** 2026-06-09
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -13,12 +13,12 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
 
-### [NEW 2026-06-05] Odie — Poodle Mix, not stated, Male
-- **URL:** https://www.petrescue.com.au/listings/1188314
-- **Shelter:** PetRescue NSW poodle search (aggregator) (Kunama, NSW </strong> <div class='cards-listings-preview__content__section__interstate'> <i class='fa fa-check'></i> Interstate adoption)
-- **Status:** available · **Fee:** $1,200.00 · **Size:** Small
-- **date_indexed:** 2026-06-05
-- Small male Poodle mix at Kunama NSW; second parent unknown — low-shedding if cross qualifies.  _(verify coat/breed, verify drive time)_
+### [NEW 2026-06-09] Fifi — Poodle (Miniature) x Maltese cross, 1 year old (adult), female
+- **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/fifi
+- **Shelter:** Wollongong Pet Connection (location unstated)
+- **Status:** available · **Fee:** not stated · **Size:** not stated
+- **date_indexed:** 2026-06-09
+- 1-year-old female Miniature Poodle–Maltese cross at Wollongong; both parent breeds are low-shedding and low-odour.
 
 ### [NEW 2026-06-04] Charlie — Maltese Mix, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1196186
@@ -33,13 +33,6 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Status:** available · **Fee:** $900.00 · **Size:** Small
 - **date_indexed:** 2026-06-04
 - Senior male maltipoo (Maltese × Poodle), 7 years, small, SMART Animal Sanctuary, Kunama NSW.  _(verify drive time)_
-
-### [NEW 2026-06-03] Russell — Maltese Mix, not stated, Male
-- **URL:** https://www.petrescue.com.au/listings/1195942
-- **Shelter:** PetRescue NSW poodle search (aggregator) (Kunama, NSW </strong> <div class='cards-listings-preview__content__section__interstate'> <i class='fa fa-check'></i> Interstate adoption)
-- **Status:** available · **Fee:** $1,500.00 · **Size:** Small
-- **date_indexed:** 2026-06-03
-- Male small Maltese mix in Kunama NSW ($1,500); borderline drive and unknown second parent — verify both.  _(verify coat/breed, verify drive time)_
 
 ### [NEW 2026-06-02] Ted — Poodle (Toy) x Maltese cross, 2 years old (adult), male
 - **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/ted
@@ -69,26 +62,12 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **date_indexed:** 2026-05-30
 - Small male Toy Poodle × Maltese mix at Sydney Animal Second-Chance, Oatley NSW; $650.
 
-### [NEW 2026-05-27] Bella — Shih Tzu, 3 years old (adult), female
-- **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/bella
-- **Shelter:** Wollongong Pet Connection (location unstated)
-- **Status:** available · **Fee:** not stated · **Size:** not stated
-- **date_indexed:** 2026-05-27
-- 3-year-old female Shih Tzu from Wollongong Pet Connection; established low-shedding, low-odour breed.
-
 ### [NEW 2026-05-27] Louie — Shih Tzu x Lhasa Apso cross, 2 years old (adult), male
 - **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/louie
 - **Shelter:** Wollongong Pet Connection (location unstated)
 - **Status:** available · **Fee:** not stated · **Size:** not stated
 - **date_indexed:** 2026-05-27
 - 2-year-old male Shih Tzu x Lhasa Apso from Wollongong; both parents low-shedding and low-odour.
-
-### [NEW 2026-05-26] Cinnamon — Poodle (Toy) Mix, not stated, Male
-- **URL:** https://www.petrescue.com.au/listings/1191675
-- **Shelter:** PetRescue NSW poodle search (aggregator) (Bateau Bay, NSW </strong> <div class='cards-listings-preview__content__section__interstate'> <span> Interstate adoption unavailable </span>)
-- **Status:** available · **Fee:** $1,500.00 · **Size:** Small
-- **date_indexed:** 2026-05-26
-- Male small Toy Poodle mix in Bateau Bay NSW; second parent breed not stated in listing.  _(verify coat/breed)_
 
 ### [NEW 2026-05-26] Gilly — Shih Tzu, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1192413
@@ -102,7 +81,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** Wollongong Pet Connection (location unstated)
 - **Status:** available · **Fee:** not stated · **Size:** not stated
 - **date_indexed:** 2026-05-25
-- Senior 9-year-old Shih Tzu–Maltese cross; white coat, desexed, vaccinated, microchipped, and ready for a loving home.
+- Senior 9-year-old Shih Tzu–Maltese cross at Wollongong; recheck confirmed still available.
 
 ### [NEW 2026-05-24] Kev — Poodle (Toy) x Pug, 10 months, male
 - **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/kev
