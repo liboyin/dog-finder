@@ -71,6 +71,20 @@ class ParseListTest(unittest.TestCase):
             self.assertRegex(listing.url, r"^https://www\.petrescue\.com\.au/listings/\d+$")
             self.assertIsNotNone(listing.name)
 
+    def test_search_card_fields_have_no_markup_leak(self):
+        """Search cards yield clean location/size/sex despite malformed card markup."""
+        listings = petrescue.parse_list(_load("petrescue_search.html"))
+        for listing in listings:
+            for value in (listing.location, listing.size, listing.sex):
+                if value:
+                    self.assertNotIn("<", value)
+                    self.assertNotIn("Interstate", value)
+        first = listings[0]
+        self.assertEqual(first.location, "Sydney, NSW")
+        self.assertEqual(first.size, "Medium")
+        self.assertEqual(first.sex, "Male")
+        self.assertTrue(petrescue.is_dog(first))
+
     def test_empty_page_returns_empty_list(self):
         """A page with no cards returns [] rather than raising."""
         self.assertEqual(petrescue.parse_list("<html><body>no cards</body></html>"), [])

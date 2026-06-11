@@ -41,13 +41,13 @@ _CARD_RE = re.compile(
     r"href='((?:https?://[^']*)?/listings/\d+)'>(.*?)</a>",
     re.S,
 )
+# Capture only the text node after the section's icon. PetRescue search cards
+# emit malformed markup (a stray </strong>, the location div left open around a
+# nested "interstate" block), so matching up to the first </div> leaks adjacent
+# HTML; the size/sex/location value is always the plain text before the next tag.
 _H3_RE = re.compile(r"<h3>(.*?)</h3>", re.S)
-_SPECIES_RE = re.compile(
-    r"__section__species'>.*?</i>\s*(.*?)\s*</div>", re.S
-)
-_LOCATION_RE = re.compile(
-    r"__section__location'>.*?</i>\s*(.*?)\s*</div>", re.S
-)
+_SPECIES_RE = re.compile(r"__section__species'>.*?</i>\s*([^<]*)", re.S)
+_LOCATION_RE = re.compile(r"__section__location'>.*?</i>\s*([^<]*)", re.S)
 
 _LDJSON_RE = re.compile(
     r'<script type=["\']application/ld\+json["\']>(.*?)</script>', re.S
