@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-06-10
+- **Last refreshed:** 2026-06-11
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -29,14 +29,14 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 
 ### [NEW 2026-06-04] Latte — Maltese Mix, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1196226
-- **Shelter:** PetRescue NSW poodle search (aggregator) (Kunama, NSW </strong> <div class='cards-listings-preview__content__section__interstate'> <span> Interstate adoption unavailable </span>)
+- **Shelter:** PetRescue NSW poodle search (aggregator) (Kunama, NSW)
 - **Status:** available · **Fee:** $900.00 · **Size:** Small
 - **date_indexed:** 2026-06-04
 - Senior male maltipoo (Maltese × Poodle), 7 years, small, SMART Animal Sanctuary, Kunama NSW.  _(verify drive time)_
 
 ### [NEW 2026-06-01] Maggie - 4 Year Old Shih Tzu — Shih Tzu Mix, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1174028
-- **Shelter:** PetRescue NSW poodle search (aggregator) (Cessnock, NSW </strong> <div class='cards-listings-preview__content__section__interstate'> <span> Interstate adoption unavailable </span>)
+- **Shelter:** PetRescue NSW poodle search (aggregator) (Cessnock, NSW)
 - **Status:** available · **Fee:** $850.00 · **Size:** Small
 - **date_indexed:** 2026-06-01
 - Female Shih Tzu mix, 4 years old, under 6 kg, available in Cessnock NSW for $850.  _(verify coat/breed)_
@@ -64,7 +64,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 
 ### [NEW 2026-05-26] Gilly — Shih Tzu, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1192413
-- **Shelter:** PetRescue NSW poodle search (aggregator) (Bateau Bay, NSW </strong> <div class='cards-listings-preview__content__section__interstate'> <span> Interstate adoption unavailable </span>)
+- **Shelter:** PetRescue NSW poodle search (aggregator) (Bateau Bay, NSW)
 - **Status:** available · **Fee:** $950.00 · **Size:** Small
 - **date_indexed:** 2026-05-26
 - Female Shih Tzu, small, available in Bateau Bay NSW; pure low-shedding low-odour breed.
@@ -74,7 +74,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** Wollongong Pet Connection (location unstated)
 - **Status:** available · **Fee:** not stated · **Size:** not stated
 - **date_indexed:** 2026-05-25
-- Senior 9-year-old Shih Tzu–Maltese cross at Wollongong; recheck confirmed still listed.
+- Senior 9-year-old Shih Tzu–Maltese cross at Wollongong; confirmed still listed.
 
 ### [NEW 2026-05-24] Kev — Poodle (Toy) x Pug, 10 months, male
 - **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/kev
