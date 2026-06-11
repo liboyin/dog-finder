@@ -88,17 +88,25 @@ echo "$(date '+%F %T %Z') apply verdicts -> $INDEX" >> "$LOG"
   --index "$INDEX" >> "$LOG" 2>&1 \
   || echo "$(date '+%F %T %Z') WARN: apply exited non-zero; index may be stale" >> "$LOG"
 
-# Commit this run's index/state if they changed, so git keeps the daily history.
+# Commit the index/state only when the dog list's membership CHANGED since the
+# last commit (a dog was added or dropped). In-place edits that keep the same set
+# of dogs stay local in the working tree, so commit history tracks the list's
+# membership changes rather than every run.
 # Only these two tracked files are staged; runs/ and logs/ stay gitignored.
 if [ -n "$(git status --porcelain -- "$INDEX" "$STATE")" ]; then
-  git add "$INDEX" "$STATE"
-  if git commit -m "Automated run on $(date '+%F')" >> "$LOG" 2>&1; then
-    echo "$(date '+%F %T %Z') committed index/state changes" >> "$LOG"
+  DECISION="$(/usr/bin/python3 -m src.pipeline index-check --index "$INDEX" 2>>"$LOG")"
+  if [ "$DECISION" = "commit" ]; then
+    git add "$INDEX" "$STATE"
+    if git commit -m "Automated run on $(date '+%F')" >> "$LOG" 2>&1; then
+      echo "$(date '+%F %T %Z') committed index/state (dog list changed)" >> "$LOG"
+    else
+      echo "$(date '+%F %T %Z') WARN: git commit of index/state failed" >> "$LOG"
+    fi
   else
-    echo "$(date '+%F %T %Z') WARN: git commit of index/state failed" >> "$LOG"
+    echo "$(date '+%F %T %Z') index changed but dog list unchanged; keeping changes local" >> "$LOG"
   fi
 else
-  echo "$(date '+%F %T %Z') no index/state changes to commit" >> "$LOG"
+  echo "$(date '+%F %T %Z') no index/state changes" >> "$LOG"
 fi
 
 # Tier 1: parse the final result event for aggregate + per-model usage.

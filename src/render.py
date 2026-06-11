@@ -15,6 +15,48 @@ _REGION_RE = re.compile(
     re.escape(BEGIN_MARKER) + r".*?" + re.escape(END_MARKER), re.S
 )
 _LAST_REFRESHED_RE = re.compile(r"(- \*\*Last refreshed:\*\*\s*).*")
+_URL_LINE_RE = re.compile(r"^- \*\*URL:\*\* (\S+)", re.M)
+
+
+def index_dog_urls(md: str) -> set[str]:
+    """Return the set of dog URLs listed in the managed region of an index.
+
+    Args:
+        md: The full dog-index.md text.
+
+    Returns:
+        The URLs of the dogs currently rendered between the DOGS markers (or, if
+        the markers are absent, anywhere in the document).
+    """
+    region = _REGION_RE.search(md)
+    text = region.group(0) if region else md
+    return set(_URL_LINE_RE.findall(text))
+
+
+def dropped_dog_urls(old_md: str, new_md: str) -> set[str]:
+    """Return dogs present in the old index but absent from the new one.
+
+    Args:
+        old_md: The previously-committed dog-index.md text.
+        new_md: The freshly-rendered dog-index.md text.
+
+    Returns:
+        The set of dog URLs that were dropped from the list.
+    """
+    return index_dog_urls(old_md) - index_dog_urls(new_md)
+
+
+def added_dog_urls(old_md: str, new_md: str) -> set[str]:
+    """Return dogs present in the new index but absent from the old one.
+
+    Args:
+        old_md: The previously-committed dog-index.md text.
+        new_md: The freshly-rendered dog-index.md text.
+
+    Returns:
+        The set of dog URLs that were added to the list.
+    """
+    return index_dog_urls(new_md) - index_dog_urls(old_md)
 
 
 def _as_date(first_seen: str | None) -> str:

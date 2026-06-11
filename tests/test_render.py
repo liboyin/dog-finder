@@ -59,5 +59,50 @@ class RenderIndexTest(unittest.TestCase):
             render.render_index("# no markers here", [ENTRY], "2026-05-25")
 
 
+def _index_with(*urls: str) -> str:
+    """Build an index whose managed region lists the given dog URLs."""
+    entries = [dict(ENTRY, url=u, name=f"Dog{i}") for i, u in enumerate(urls)]
+    return render.render_index(INDEX, entries, "2026-05-25")
+
+
+class IndexDogUrlsTest(unittest.TestCase):
+    def test_extracts_only_region_urls(self):
+        """index_dog_urls returns the dog URLs from the managed region."""
+        md = _index_with("https://x/1", "https://x/2")
+        self.assertEqual(render.index_dog_urls(md), {"https://x/1", "https://x/2"})
+
+    def test_empty_region(self):
+        """An index with no dogs yields an empty set."""
+        self.assertEqual(render.index_dog_urls(render.render_index(INDEX, [], "2026-05-25")), set())
+
+
+class DroppedDogUrlsTest(unittest.TestCase):
+    def test_detects_only_drops(self):
+        """dropped_dog_urls reports removed dogs and ignores additions."""
+        old = _index_with("https://x/1", "https://x/2")
+        new = _index_with("https://x/2", "https://x/3")  # 1 dropped, 3 added
+        self.assertEqual(render.dropped_dog_urls(old, new), {"https://x/1"})
+
+    def test_pure_additions_drop_nothing(self):
+        """Adding dogs without removing any yields no dropped URLs."""
+        old = _index_with("https://x/1")
+        new = _index_with("https://x/1", "https://x/2")
+        self.assertEqual(render.dropped_dog_urls(old, new), set())
+
+
+class AddedDogUrlsTest(unittest.TestCase):
+    def test_detects_only_additions(self):
+        """added_dog_urls reports new dogs and ignores drops."""
+        old = _index_with("https://x/1", "https://x/2")
+        new = _index_with("https://x/2", "https://x/3")  # 3 added, 1 dropped
+        self.assertEqual(render.added_dog_urls(old, new), {"https://x/3"})
+
+    def test_unchanged_set_adds_nothing(self):
+        """The same set of dogs (in any order) yields no additions."""
+        old = _index_with("https://x/1", "https://x/2")
+        new = _index_with("https://x/2", "https://x/1")
+        self.assertEqual(render.added_dog_urls(old, new), set())
+
+
 if __name__ == "__main__":
     unittest.main()

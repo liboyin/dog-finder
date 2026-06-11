@@ -23,6 +23,7 @@ import argparse
 import json
 import logging
 import os
+import subprocess
 import time
 from datetime import datetime, timedelta
 
@@ -264,6 +265,56 @@ def prune(state_path: str, days: int) -> int:
     return len(removed)
 
 
+def _git_head_version(path: str) -> str | None:
+    """Return the HEAD-committed contents of a tracked file, or None if absent.
+
+    Args:
+        path: Path to a file inside the git repo.
+
+    Returns:
+        The file's contents at HEAD, or None if git is unavailable or the file
+        is not tracked at HEAD.
+    """
+    try:
+        root = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        rel = os.path.relpath(os.path.abspath(path), root)
+        result = subprocess.run(
+            ["git", "show", f"HEAD:{rel}"], cwd=root, capture_output=True, text=True,
+        )
+        return result.stdout if result.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def index_requires_commit(index_path: str) -> bool:
+    """Decide whether the index changes warrant a commit.
+
+    A commit is warranted when the list's membership changed since the last
+    commit — a dog was added or dropped. In-place field edits that keep the same
+    set of dog URLs are left uncommitted in the working tree. If the HEAD version
+    cannot be read, err on the side of committing.
+
+    Args:
+        index_path: Path to data/dog-index.md (the freshly-rendered version).
+
+    Returns:
+        True if a dog was added or dropped (or the prior version is unavailable).
+    """
+    with open(index_path, encoding="utf-8") as handle:
+        new_md = handle.read()
+    old_md = _git_head_version(index_path)
+    if old_md is None:
+        logger.info("index-check: no committed index to compare against; committing")
+        return True
+    dropped = render.dropped_dog_urls(old_md, new_md)
+    added = render.added_dog_urls(old_md, new_md)
+    logger.info("index-check vs HEAD: %d added, %d dropped", len(added), len(dropped))
+    return bool(added or dropped)
+
+
 def _load_verdicts(path: str) -> list[dict]:
     """Load verdicts.json, accepting either a bare list or a {"verdicts": [...]} dict."""
     with open(path, encoding="utf-8") as handle:
@@ -325,6 +376,9 @@ def main() -> int:
     apply_parser.add_argument("--verdicts", required=True)
     apply_parser.add_argument("--index", required=True)
 
+    check_parser = sub.add_parser("index-check", help="print 'commit' if a dog was dropped since HEAD, else 'keep'")
+    check_parser.add_argument("--index", required=True)
+
     args = parser.parse_args()
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -334,6 +388,8 @@ def main() -> int:
     if args.command == "prune":
         n_pruned = prune(args.state, args.days)
         print(f"prune complete: removed {n_pruned} stale entry(ies)")
+    elif args.command == "index-check":
+        print("commit" if index_requires_commit(args.index) else "keep")
     elif args.command == "collect":
         stats = collect(args.shelters, args.state, args.out)
         print(
