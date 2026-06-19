@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-06-12
+- **Last refreshed:** 2026-06-19
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -12,6 +12,55 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ## Current candidates
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
+
+### [NEW 2026-06-19] Ella — Shih Tzu x Maltese, not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1198504
+- **Shelter:** PetRescue NSW poodle search (aggregator) (Wollongong, NSW)
+- **Status:** available · **Fee:** $300.00 · **Size:** Small
+- **date_indexed:** 2026-06-19
+- Female Shih Tzu × Maltese (malshi), small, at Wollongong NSW for $300.
+
+### [NEW 2026-06-19] Teddy — Shih Tzu Mix, not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1198618
+- **Shelter:** PetRescue NSW poodle search (aggregator) (Redfern, NSW)
+- **Status:** available · **Fee:** $2,100.00 · **Size:** Small
+- **date_indexed:** 2026-06-19
+- Male Shih Tzu mix, small, Redfern NSW; $2,100 — second parent unstated, verify breed and coat.  _(verify coat/breed)_
+
+### [NEW 2026-06-19] Marshmellow — Maltese x Poodle, not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1198732
+- **Shelter:** SoCares Charmhaven Animal Care Facility (Charmhaven, NSW)
+- **Status:** available · **Fee:** $1,000.00 · **Size:** Small
+- **date_indexed:** 2026-06-19
+- Female Maltese × Poodle (maltipoo), small, SoCares Charmhaven, Central Coast NSW; $1,000.
+
+### [NEW 2026-06-19] Potato — Griffon Bruxellois (Wire), not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1199215
+- **Shelter:** PetRescue NSW poodle search (aggregator) (Kunama, NSW)
+- **Status:** available · **Fee:** $1,500.00 · **Size:** Small
+- **date_indexed:** 2026-06-19
+- Female Griffon Bruxellois wire-coat (Brussels Griffon rough), small, Kunama NSW; $1,500 — verify drive time.  _(verify drive time)_
+
+### [NEW 2026-06-19] Flo — Griffon Bruxellois (Wire), not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1199223
+- **Shelter:** PetRescue NSW poodle search (aggregator) (Kunama, NSW)
+- **Status:** available · **Fee:** $1,500.00 · **Size:** Small
+- **date_indexed:** 2026-06-19
+- Female Griffon Bruxellois wire-coat (Brussels Griffon rough), small, Kunama NSW; $1,500 — verify drive time.  _(verify drive time)_
+
+### [NEW 2026-06-19] Wilbur — Griffon Bruxellois (Wire), not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1199227
+- **Shelter:** PetRescue NSW poodle search (aggregator) (Kunama, NSW)
+- **Status:** available · **Fee:** $1,500.00 · **Size:** Small
+- **date_indexed:** 2026-06-19
+- Male Griffon Bruxellois wire-coat (Brussels Griffon rough), small, Kunama NSW; $1,500 — verify drive time.  _(verify drive time)_
+
+### [NEW 2026-06-19] Monty — Maltese, not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1199299
+- **Shelter:** PetRescue NSW poodle search (aggregator) (Eatonsville, NSW)
+- **Status:** available · **Fee:** not stated · **Size:** Small
+- **date_indexed:** 2026-06-19
+- Male Maltese, small, available at Eatonsville NSW (Hunter Valley); no adoption fee listed.
 
 ### [NEW 2026-06-12] Marney — Maltese / Shih Tzu, 12 years 1 month, Female
 - **URL:** https://www.rspcansw.org.au/adopt/pet/651411/
@@ -26,13 +75,6 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Status:** available · **Fee:** $500.00 · **Size:** Small
 - **date_indexed:** 2026-06-10
 - Female Maltese, small, $500, RSPCA Illawarra Shelter, Cordeaux Heights NSW.
-
-### [NEW 2026-06-09] Fifi — Poodle (Miniature) x Maltese cross, 1 year old (adult), female
-- **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/fifi
-- **Shelter:** Wollongong Pet Connection (location unstated)
-- **Status:** available · **Fee:** not stated · **Size:** not stated
-- **date_indexed:** 2026-06-09
-- 1-year-old female Miniature Poodle–Maltese cross at Wollongong; both parent breeds are low-shedding and low-odour.
 
 ### [NEW 2026-06-01] Maggie - 4 Year Old Shih Tzu — Shih Tzu Mix, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1174028
@@ -74,7 +116,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** Wollongong Pet Connection (location unstated)
 - **Status:** available · **Fee:** not stated · **Size:** not stated
 - **date_indexed:** 2026-05-25
-- Senior 9-year-old Shih Tzu–Maltese cross at Wollongong; confirmed still listed.
+- Senior 9-year-old Shih Tzu–Maltese cross at Wollongong; confirmed still available for $300.
 
 ### [NEW 2026-05-24] Kev — Poodle (Toy) x Pug, 10 months, male
 - **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/kev
