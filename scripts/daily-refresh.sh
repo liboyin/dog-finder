@@ -70,13 +70,42 @@ PROMPT="$PROMPT
 The launcher merges that file into state and re-renders the index after you finish; do NOT edit dog-index.md yourself."
 
 # Tier 2: full event stream -> STREAM ; human-readable progress/errors -> LOG
+#
+# Run the judge under a watchdog. launchd will NOT start the next 21:00
+# StartCalendarInterval run while this script is still alive, so a hung claude
+# call (e.g. an unbounded API-retry spin) silently blocks every future night
+# until the stuck process is killed by hand — exactly what happened on
+# 2026-06-14. JUDGE_TIMEOUT caps the call so one bad night can't wedge the
+# schedule. 5400s (90 min) is ~7x the slowest healthy judge step observed.
+# --max-budget-usd bounds API spend but not a non-billable spin, so it is not a
+# substitute for this wall-clock guard.
+JUDGE_TIMEOUT=5400
 echo "$(date '+%F %T %Z') invoking Claude (sonnet) to judge pending dogs; live tool activity in $STREAM" >> "$LOG"
 /usr/local/bin/claude -p "$PROMPT" \
   --model sonnet \
   --dangerously-skip-permissions \
   --max-budget-usd 2.5 \
-  --output-format stream-json --verbose > "$STREAM" 2>>"$LOG"
+  --output-format stream-json --verbose > "$STREAM" 2>>"$LOG" &
+CLAUDE_PID=$!
+# Watchdog: if the judge outlives JUDGE_TIMEOUT, TERM (then KILL) it and its
+# children so the script can finish and release the launchd slot. Exits quietly
+# if the judge has already returned on its own.
+(
+  sleep "$JUDGE_TIMEOUT"
+  kill -0 "$CLAUDE_PID" 2>/dev/null || exit 0
+  echo "$(date '+%F %T %Z') WARN: judge exceeded ${JUDGE_TIMEOUT}s; killing pid $CLAUDE_PID and children" >> "$LOG"
+  pkill -TERM -P "$CLAUDE_PID" 2>/dev/null
+  kill -TERM "$CLAUDE_PID" 2>/dev/null
+  sleep 10
+  pkill -KILL -P "$CLAUDE_PID" 2>/dev/null
+  kill -KILL "$CLAUDE_PID" 2>/dev/null
+) &
+WATCHDOG_PID=$!
+wait "$CLAUDE_PID"
 CODE=$?
+# Judge finished (on its own or via the watchdog); cancel the watchdog if still sleeping.
+kill "$WATCHDOG_PID" 2>/dev/null
+wait "$WATCHDOG_PID" 2>/dev/null
 
 # Phase 2 apply: merge the LLM's verdicts into state and re-render the index.
 # Tolerant of a missing verdicts.json (e.g. the LLM run failed) — apply just
