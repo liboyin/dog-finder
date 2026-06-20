@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-06-19
+- **Last refreshed:** 2026-06-20
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -12,6 +12,13 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ## Current candidates
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
+
+### [NEW 2026-06-20] Coco — Maltese Mix, not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1199422
+- **Shelter:** RSPCA NSW BARC Central Coast (Somersby) (Kariong, NSW)
+- **Status:** available · **Fee:** $500.00 · **Size:** Small
+- **date_indexed:** 2026-06-20
+- Female Maltese mix, 4 years, small, RSPCA BARC Central Coast, Kariong NSW; $500 — second parent unstated.  _(verify coat/breed)_
 
 ### [NEW 2026-06-19] Ella — Shih Tzu x Maltese, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1198504
@@ -46,14 +53,14 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** PetRescue NSW poodle search (aggregator) (Kunama, NSW)
 - **Status:** available · **Fee:** $1,500.00 · **Size:** Small
 - **date_indexed:** 2026-06-19
-- Female Griffon Bruxellois wire-coat (Brussels Griffon rough), small, Kunama NSW; $1,500 — verify drive time.  _(verify drive time)_
+- Female Griffon Bruxellois wire-coat (Brussels Griffon rough), small, Kunama NSW; $1,500.  _(verify drive time)_
 
 ### [NEW 2026-06-19] Wilbur — Griffon Bruxellois (Wire), not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1199227
 - **Shelter:** PetRescue NSW poodle search (aggregator) (Kunama, NSW)
 - **Status:** available · **Fee:** $1,500.00 · **Size:** Small
 - **date_indexed:** 2026-06-19
-- Male Griffon Bruxellois wire-coat (Brussels Griffon rough), small, Kunama NSW; $1,500 — verify drive time.  _(verify drive time)_
+- Male Griffon Bruxellois wire-coat (Brussels Griffon rough), small, Kunama NSW; $1,500.  _(verify drive time)_
 
 ### [NEW 2026-06-19] Monty — Maltese, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1199299
@@ -102,7 +109,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** Wollongong Pet Connection (location unstated)
 - **Status:** available · **Fee:** not stated · **Size:** not stated
 - **date_indexed:** 2026-05-27
-- 2-year-old male Shih Tzu x Lhasa Apso from Wollongong; both parents low-shedding and low-odour.
+- 2-year-old male Shih Tzu × Lhasa Apso from Wollongong Pet Connection; both parents low-shedding and low-odour.
 
 ### [NEW 2026-05-26] Gilly — Shih Tzu, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1192413
@@ -116,7 +123,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** Wollongong Pet Connection (location unstated)
 - **Status:** available · **Fee:** not stated · **Size:** not stated
 - **date_indexed:** 2026-05-25
-- Senior 9-year-old Shih Tzu–Maltese cross at Wollongong; confirmed still available for $300.
+- Senior 9-year-old female Shih Tzu × Maltese cross at Wollongong Pet Connection; both parents low-shedding.
 
 ### [NEW 2026-05-24] Kev — Poodle (Toy) x Pug, 10 months, male
 - **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/kev
