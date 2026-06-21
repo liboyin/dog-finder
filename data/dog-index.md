@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-06-20
+- **Last refreshed:** 2026-06-21
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -48,26 +48,12 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **date_indexed:** 2026-06-19
 - Female Griffon Bruxellois wire-coat (Brussels Griffon rough), small, Kunama NSW; $1,500 — verify drive time.  _(verify drive time)_
 
-### [NEW 2026-06-19] Flo — Griffon Bruxellois (Wire), not stated, Female
-- **URL:** https://www.petrescue.com.au/listings/1199223
-- **Shelter:** PetRescue NSW poodle search (aggregator) (Kunama, NSW)
-- **Status:** available · **Fee:** $1,500.00 · **Size:** Small
-- **date_indexed:** 2026-06-19
-- Female Griffon Bruxellois wire-coat (Brussels Griffon rough), small, Kunama NSW; $1,500.  _(verify drive time)_
-
 ### [NEW 2026-06-19] Wilbur — Griffon Bruxellois (Wire), not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1199227
 - **Shelter:** PetRescue NSW poodle search (aggregator) (Kunama, NSW)
 - **Status:** available · **Fee:** $1,500.00 · **Size:** Small
 - **date_indexed:** 2026-06-19
 - Male Griffon Bruxellois wire-coat (Brussels Griffon rough), small, Kunama NSW; $1,500.  _(verify drive time)_
-
-### [NEW 2026-06-19] Monty — Maltese, not stated, Male
-- **URL:** https://www.petrescue.com.au/listings/1199299
-- **Shelter:** PetRescue NSW poodle search (aggregator) (Eatonsville, NSW)
-- **Status:** available · **Fee:** not stated · **Size:** Small
-- **date_indexed:** 2026-06-19
-- Male Maltese, small, available at Eatonsville NSW (Hunter Valley); no adoption fee listed.
 
 ### [NEW 2026-06-12] Marney — Maltese / Shih Tzu, 12 years 1 month, Female
 - **URL:** https://www.rspcansw.org.au/adopt/pet/651411/
