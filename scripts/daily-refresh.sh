@@ -1,6 +1,6 @@
 #!/bin/zsh
 # Daily-refresh launcher for the Sydney dog-finder.
-# Invoked by launchd (com.dog-finder.daily-refresh) at 21:00 local time.
+# Invoked by launchd (com.dog-finder.daily-refresh) at 13:00 local time.
 # Lives outside ~/Documents so the launchd agent isn't blocked by macOS TCC.
 #
 # Each run gets a folder runs/<ts>/ holding: the deterministic pipeline output
@@ -71,11 +71,11 @@ The launcher merges that file into state and re-renders the index after you fini
 
 # Tier 2: full event stream -> STREAM ; human-readable progress/errors -> LOG
 #
-# Run the judge under a watchdog. launchd will NOT start the next 21:00
+# Run the judge under a watchdog. launchd will NOT start the next 13:00
 # StartCalendarInterval run while this script is still alive, so a hung claude
-# call (e.g. an unbounded API-retry spin) silently blocks every future night
+# call (e.g. an unbounded API-retry spin) silently blocks every future run
 # until the stuck process is killed by hand — exactly what happened on
-# 2026-06-14. JUDGE_TIMEOUT caps the call so one bad night can't wedge the
+# 2026-06-14. JUDGE_TIMEOUT caps the call so one bad run can't wedge the
 # schedule. 5400s (90 min) is ~7x the slowest healthy judge step observed.
 # --max-budget-usd bounds API spend but not a non-billable spin, so it is not a
 # substitute for this wall-clock guard.
@@ -128,6 +128,14 @@ if [ -n "$(git status --porcelain -- "$INDEX" "$STATE")" ]; then
     git add "$INDEX" "$STATE"
     if git commit -m "Automated run on $(date '+%F')" >> "$LOG" 2>&1; then
       echo "$(date '+%F %T %Z') committed index/state (dog list changed)" >> "$LOG"
+      # Publish the commit so the GitHub copy tracks the local membership change.
+      # Non-fatal: a push failure (e.g. no network) leaves the commit local for
+      # the next run to push, and must not wedge the rest of the script.
+      if git push >> "$LOG" 2>&1; then
+        echo "$(date '+%F %T %Z') pushed commit to origin" >> "$LOG"
+      else
+        echo "$(date '+%F %T %Z') WARN: git push to origin failed" >> "$LOG"
+      fi
     else
       echo "$(date '+%F %T %Z') WARN: git commit of index/state failed" >> "$LOG"
     fi

@@ -1,6 +1,6 @@
 # Daily-refresh prompt for dog-finder
 
-**To install as a scheduled task:** in Claude Code, run `/schedule` and paste the prompt below. Cron: `0 21 * * *` (9pm AEST daily). Task ID suggestion: `dog-finder-daily-refresh`.
+**To install as a scheduled task:** in Claude Code, run `/schedule` and paste the prompt below. Cron: `0 13 * * *` (1pm AEST daily). Task ID suggestion: `dog-finder-daily-refresh`.
 
 ---
 

@@ -1,7 +1,7 @@
 # dog-finder
 
 A daily-refreshed adoption index of small, low-shedding, low-odour dogs at shelters within
-~4 hours of Sydney (NSW + ACT). A nightly job maintains a single human-reviewed Markdown index,
+~4 hours of Sydney (NSW + ACT). A daily job maintains a single human-reviewed Markdown index,
 [`data/dog-index.md`](data/dog-index.md): prepending newly-found qualifying dogs and pruning
 adopted ones.
 
@@ -29,7 +29,7 @@ The architecture and design decisions below all serve a handful of objectives:
   (does this breed/cross qualify, is this borderline location in range, is a vanished dog
   adopted). This drives the judgment/determinism split in *Architecture* and the budget cap in
   *Key design decisions*.
-- **Unattended daily operation.** A nightly job keeps the index current with no human in the loop
+- **Unattended daily operation.** A daily job keeps the index current with no human in the loop
   for the run itself; a person only reads and reviews the result.
 - **The human makes the final call.** The system curates and maintains but never decides which
   dog to adopt — which is why the primary artifact is a reviewable Markdown index, not a database.
@@ -47,7 +47,7 @@ prose Markdown:
 
 - **Code does the rote work and owns the state.** Fetching static pages, parsing listing cards,
   deduping, and tracking what's been seen are deterministic and belong in Python. The
-  `src/pipeline.py collect` phase runs first each night: it fetches and parses the server-rendered
+  `src/pipeline.py collect` phase runs first each run: it fetches and parses the server-rendered
   PetRescue shelters (the majority), dedups against `state.json`, detail-fetches each genuinely
   new dog for breed/fee, flags vanished qualified dogs as `maybe_adopted`, and writes
   `pending.json` (dogs needing a verdict) plus `fetch_manifest.json`. The `apply` phase then
@@ -65,7 +65,7 @@ prose Markdown:
 ## Key design decisions
 
 - **Runs locally via launchd, not the cloud.** The job is a macOS `launchd` agent
-  (`com.dog-finder.daily-refresh`, 21:00 Australia/Sydney). The cloud "Routines" feature can't
+  (`com.dog-finder.daily-refresh`, 13:00 Australia/Sydney). The cloud "Routines" feature can't
   reach local files, and the index lives on disk, so the schedule must be local too.
 - **Lives outside `~/Documents`.** macOS TCC blocks launchd agents from reading the Documents
   folder, which would silently break the unattended run. The project is self-contained under its
@@ -81,10 +81,10 @@ prose Markdown:
 - **Git tracks the valuable artifacts and their inputs.** Tracked: `state.json` (the authoritative
   record), the rendered index, shelter config, prompt, code, and deploy files. The per-run
   artifacts (`pending.json`, `verdicts.json`, `fetch_manifest.json`, stream/report) and logs are
-  generated, not authored, so they are gitignored under `runs/` and `logs/`. A nightly run
-  auto-commits `state.json`/`dog-index.md` (`Automated run on YYYY-MM-DD`) **only when the dog
-  list's membership changes** — a dog added or dropped. In-place edits that keep the same set of
-  dogs stay local, so commit history tracks membership changes, not every run.
+  generated, not authored, so they are gitignored under `runs/` and `logs/`. A daily run
+  auto-commits and pushes `state.json`/`dog-index.md` (`Automated run on YYYY-MM-DD`) to `origin`
+  **only when the dog list's membership changes** — a dog added or dropped. In-place edits that
+  keep the same set of dogs stay local, so commit history tracks membership changes, not every run.
 
 ## Assumptions
 
