@@ -1,30 +1,25 @@
-This file is intended for AI agents.
+This file contains guidelines that all AI agents MUST follow.
 
 # Meta Guidelines
 
 - State assumptions explicitly. When you notice ambiguity (e.g. two conflicting patterns, or a design choice with no stated rationale), confirm with the user before continuing.
-- Prefer spawning subagents to keep the main context window clean.
+- Agents SHOULD spawn subagents to keep the main context window clean.
 - Before considering a task done, re-check that all instructions in this file are followed.
 
 # Documentation Guidelines
 
-- `README.md` describes project architecture, dataflow, design decisions, and assumptions for both humans and AI agents. It is the WHY document and must not be mixed with HOW content.
+- Each document file MUST be the only source of truth for the information it contains.
+- Documentation MUST be updated as soon as its content no longer reflects the latest state of the project.
+- `README.md` describes project structure, architecture, dataflow, design decisions & assumptions, and test & deploy procedures.
+- Usage of modal verbs in `AGENTS.md` (this document) MUST follow IETF RFC 2119.
 - New or modified functions/methods in non-test scripts require Google-style docstrings; unit test functions require a one-line docstring.
 
 # Implementation Guidelines
 
 - Implement only what was asked; do not add features or unrelated refactors.
-- Prefer the simplest implementation. Each function/class/module must have a single responsibility and a well-defined interface; other SOLID principles may be relaxed in favor of simplicity.
-- Keep implementations easy to test with minimal mocking. Prefer pure functions, and isolate side effects where practical.
-- Use up-to-date features from languages, libraries, and frameworks.
-- Commit each functionally independent change once fully implemented, tested, and documented.
-- Commit messages must follow this template:
-
-```
-<Your name: Claude/Codex/Gemini/...>: <one-line summary>
-
-<One paragraph describing the change in detail. If more than one paragraph is necessary, the change can probably be broken down.>
-```
+- Prefer the simplest implementation. Each function/class/module MUST have a single responsibility and a well-defined interface; other SOLID principles MAY be relaxed in favor of simplicity.
+- Implementations SHOULD be easy to test with minimal mocking. Pure functions are preferred, and side effects SHOULD be isolated.
+- Code SHOULD use up-to-date features from languages, libraries, and frameworks.
 
 # Review Guidelines
 
@@ -38,3 +33,14 @@ Review your own changes before committing:
 - Anything else a senior reviewer would push back on? (Use judgment)
 
 Fix trivial issues. For others, stop and confirm with the user.
+
+# Version Control Guidelines
+
+- Commit each functionally independent change once fully implemented, tested, and documented.
+- Commit messages MUST follow this template (Claude - do not add "Co-Authored-By" line):
+
+```
+<Your name: Claude/Codex/Gemini/...>: <one-line summary>
+
+<One paragraph describing the change in detail. If more than one paragraph is necessary to explain the change, the commit SHOULD be broken down.>
+```
