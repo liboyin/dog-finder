@@ -1,6 +1,6 @@
 # Daily-refresh prompt for dog-finder
 
-**To install as a scheduled task:** in Claude Code, run `/schedule` and paste the prompt below. Cron: `0 13 * * *` (1pm AEST daily). Task ID suggestion: `dog-finder-daily-refresh`.
+The job runs **locally only** — installed as a macOS `launchd` agent, not a cloud scheduler. See *Deploy* in [`README.md`](../README.md) for the install procedure and how to change the schedule. The launcher (`scripts/daily-refresh.sh`) extracts everything after the `---` below as the prompt, so this file is the single source of truth for the judge's instructions.
 
 ---
 

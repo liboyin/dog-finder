@@ -5,7 +5,7 @@ A daily-refreshed adoption index of small, low-shedding, low-odour dogs at shelt
 [`data/dog-index.md`](data/dog-index.md): prepending newly-found qualifying dogs and pruning
 adopted ones.
 
-This document explains *why* the project is shaped the way it is.
+This document explains *why* the project is shaped the way it is; see *Deploy* at the end for how to install and run it.
 
 ## What it produces
 
@@ -113,3 +113,19 @@ prose Markdown:
 - **State stays bounded by a 90-day sweep.** At each run's start, entries not seen on any shelter
   for 90 days are dropped from `state.json` (keyed on `last_seen`, so still-listed dogs never age
   out). A pruned dog that reappears is simply re-discovered as new.
+
+## Deploy
+
+The job runs **locally only**, as a macOS `launchd` agent — never as a cloud routine (see *Runs
+locally via launchd, not the cloud* above). All steps run on this machine, from the repo root:
+
+- **Install:** copy the agent definition into `LaunchAgents` and load it —
+  `cp deploy/com.dog-finder.daily-refresh.plist ~/Library/LaunchAgents/` then
+  `launchctl load ~/Library/LaunchAgents/com.dog-finder.daily-refresh.plist`.
+- **Change the schedule (or any field):** edit `deploy/com.dog-finder.daily-refresh.plist` — its
+  `StartCalendarInterval` sets the run time — then copy it over the installed copy as above and
+  reload it: run `launchctl unload` then `launchctl load`, both on
+  `~/Library/LaunchAgents/com.dog-finder.daily-refresh.plist`.
+- **Verify & inspect:** `launchctl list | grep dog-finder` confirms it is registered;
+  `logs/daily-refresh.log` records each run. To run once on demand without waiting for the
+  schedule, invoke `scripts/daily-refresh.sh` directly.
