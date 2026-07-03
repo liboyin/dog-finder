@@ -3,9 +3,11 @@
 Two subcommands frame one nightly run:
 
 * ``collect`` — fetch and parse the server-rendered PetRescue shelters, dedup
-  against ``state.json``, detail-fetch genuinely new dogs, flag qualified dogs
-  that vanished as ``maybe_adopted``, and write ``pending.json`` (dogs needing a
-  verdict) plus ``fetch_manifest.json`` (per-source outcomes, incl. the
+  against ``state.json``, detail-fetch genuinely new dogs, re-fetch the detail
+  page of already-qualified dogs to refresh status and catch a now-dead detail
+  URL, flag qualified dogs that vanished (from their list page or detail page)
+  as ``maybe_adopted``, and write ``pending.json`` (dogs needing a verdict)
+  plus ``fetch_manifest.json`` (per-source outcomes, incl. the
   ``NEEDS_BROWSER`` shelters the LLM must handle via the browser MCP).
 * ``apply`` — merge the LLM's ``verdicts.json`` into ``state.json`` and
   re-render the human-facing ``dog-index.md`` from state.
@@ -31,7 +33,7 @@ from src import manifest, render, store
 from src.dedup import canonical
 from src.fetch import FetchError, fetch
 from src.parsers import registry
-from src.parsers.base import ParseError, is_dog
+from src.parsers.base import Listing, ParseError, is_dog
 
 DETAIL_FETCH_DELAY_S = 0.5
 PAGE_DELAY_S = 0.5
@@ -177,6 +179,57 @@ def _collect_source(
     return base
 
 
+def _recheck_qualified_details(state: dict) -> list[dict]:
+    """Re-fetch each qualified listing's own detail page to catch drift its
+    shelter's list page won't show: a status change (e.g. available -> on-hold),
+    an explicit "adopted" status while the card lingers on the shelter's list,
+    or a detail URL that now 404s outright.
+
+    Scoped to qualified, non-removed listings (the handful actually shown in
+    the index) with a registered detail parser; browser-discovered listings
+    have no static parser to re-fetch with and are skipped, matching
+    ``flag_disappeared``'s existing browser exclusion. An entry already flagged
+    this run is also skipped, since it's already headed to the LLM.
+
+    An unreachable detail page or one now marked "adopted" is flagged for the
+    LLM to confirm and prune (same as a listing vanishing from its list page) —
+    code detects the anomaly, the LLM confirms removal, matching how
+    ``flag_disappeared`` already handles a vanished listing. The status field is
+    still updated in either case so the index shows what was actually found
+    while confirmation is pending, rather than a stale "available".
+
+    Args:
+        state: The state document (mutated in place).
+
+    Returns:
+        The list of entries newly flagged maybe_adopted because their detail
+        page is now unreachable or reports "adopted".
+    """
+    flagged = []
+    for entry in state["listings"].values():
+        if entry.get("verdict") != store.QUALIFIED or entry.get("removed") or entry.get("recheck"):
+            continue
+        module = registry.by_source_kind(entry.get("source_kind"))
+        if module is None or not hasattr(module, "parse_detail"):
+            continue
+        listing = Listing(url=entry["url"])
+        try:
+            detail = fetch(entry["url"])
+            module.parse_detail(detail.body, listing)
+        except (FetchError, ParseError):
+            entry["recheck"] = "maybe_adopted"
+            flagged.append(entry)
+            continue
+        finally:
+            time.sleep(DETAIL_FETCH_DELAY_S)
+        if listing.status:
+            entry["status"] = listing.status
+        if listing.status == "adopted":
+            entry["recheck"] = "maybe_adopted"
+            flagged.append(entry)
+    return flagged
+
+
 def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
     """Run the collect phase: update state and write pending.json + manifest.
 
@@ -228,6 +281,12 @@ def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
     flagged = store.flag_disappeared(state, present, ts, fetched_shelters)
     if flagged:
         logger.info("flagged %d qualified dog(s) as maybe_adopted (vanished this run)", len(flagged))
+
+    detail_flagged = _recheck_qualified_details(state)
+    if detail_flagged:
+        logger.info("flagged %d qualified dog(s) as maybe_adopted (detail page unreachable or adopted)",
+                    len(detail_flagged))
+    flagged = flagged + detail_flagged
     store.save_state(state_path, state)
 
     pending = store.pending_listings(state)

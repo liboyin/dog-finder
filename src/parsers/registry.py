@@ -46,3 +46,19 @@ def resolve(shelter: dict):
             if candidate and _host_matches(candidate, host):
                 return module, candidate
     return None
+
+
+def by_source_kind(source_kind: str | None):
+    """Return the parser module whose ``SOURCE_KIND`` matches, or None.
+
+    Args:
+        source_kind: A state entry's stored ``source_kind`` (e.g. "petrescue").
+
+    Returns:
+        The registered parser module, or None for an unknown kind (e.g.
+        "browser", which has no static detail page to re-fetch).
+    """
+    for _, module in _REGISTRY:
+        if getattr(module, "SOURCE_KIND", None) == source_kind:
+            return module
+    return None

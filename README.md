@@ -49,9 +49,12 @@ prose Markdown:
   deduping, and tracking what's been seen are deterministic and belong in Python. The
   `src/pipeline.py collect` phase runs first each run: it fetches and parses the server-rendered
   PetRescue shelters (the majority), dedups against `state.json`, detail-fetches each genuinely
-  new dog for breed/fee, flags vanished qualified dogs as `maybe_adopted`, and writes
-  `pending.json` (dogs needing a verdict) plus `fetch_manifest.json`. The `apply` phase then
-  merges the LLM's verdicts into state and re-renders the index.
+  new dog for breed/fee, re-fetches the detail page of each already-qualified dog to refresh its
+  status (e.g. `available` → `on-hold`) since a still-listed card never re-exposes that on its own,
+  flags vanished qualified dogs as `maybe_adopted` — whether vanished from the shelter's list page
+  or from a since-dead detail URL — and writes `pending.json` (dogs needing a verdict) plus
+  `fetch_manifest.json`. The `apply` phase then merges the LLM's verdicts into state and re-renders
+  the index.
 - **The LLM does only judgment.** It decides whether a breed/cross meets the low-shed criteria,
   writes the ≤25-word summaries, resolves geo-borderline cases, and confirms vanished dogs as
   adopted — emitting a single `verdicts.json`. It never hand-edits the index or state; code

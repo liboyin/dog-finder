@@ -35,5 +35,17 @@ class ResolveTest(unittest.TestCase):
         self.assertIsNone(registry.resolve({"listing_url": "https://sydneydogsandcatshome.org/adopt/"}))
 
 
+class BySourceKindTest(unittest.TestCase):
+    def test_known_kinds_resolve_to_their_module(self):
+        """"petrescue" and "wollongong" resolve to their respective modules."""
+        self.assertIs(registry.by_source_kind("petrescue"), petrescue)
+        self.assertIs(registry.by_source_kind("wollongong"), wollongong)
+
+    def test_unknown_kind_returns_none(self):
+        """An unregistered kind (e.g. "browser") returns None."""
+        self.assertIsNone(registry.by_source_kind("browser"))
+        self.assertIsNone(registry.by_source_kind(None))
+
+
 if __name__ == "__main__":
     unittest.main()

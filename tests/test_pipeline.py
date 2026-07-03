@@ -91,5 +91,97 @@ class PaginationLoopTest(unittest.TestCase):
         self.assertIn("MAX_PAGES", res.error or "")
 
 
+class RecheckQualifiedDetailsTest(unittest.TestCase):
+    def setUp(self):
+        """Silence the inter-fetch sleep so tests run fast."""
+        patcher = mock.patch("time.sleep")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _qualified_entry(self, url: str, **overrides) -> dict:
+        """A minimal qualified, non-removed state entry."""
+        entry = {
+            "url": url, "verdict": store.QUALIFIED, "removed": False,
+            "source_kind": "fake", "recheck": None, "status": "available",
+        }
+        entry.update(overrides)
+        return entry
+
+    def test_status_refreshed_from_detail_page(self):
+        """A qualified dog's detail page is re-fetched and its status updated."""
+        state = store.empty_state()
+        state["listings"]["https://x/1"] = self._qualified_entry("https://x/1")
+
+        def parse_detail(body, listing):
+            listing.status = "on-hold"
+            return listing
+
+        mod = types.SimpleNamespace(parse_detail=parse_detail)
+        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
+             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
+            flagged = pipeline._recheck_qualified_details(state)
+        self.assertEqual(flagged, [])
+        self.assertEqual(state["listings"]["https://x/1"]["status"], "on-hold")
+
+    def test_adopted_detail_page_flags_maybe_adopted(self):
+        """A detail page now marked adopted is flagged, not left displayed as-is."""
+        state = store.empty_state()
+        state["listings"]["https://x/1"] = self._qualified_entry("https://x/1")
+
+        def parse_detail(body, listing):
+            listing.status = "adopted"
+            return listing
+
+        mod = types.SimpleNamespace(parse_detail=parse_detail)
+        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
+             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
+            flagged = pipeline._recheck_qualified_details(state)
+        self.assertEqual(len(flagged), 1)
+        self.assertEqual(state["listings"]["https://x/1"]["recheck"], "maybe_adopted")
+        self.assertEqual(state["listings"]["https://x/1"]["status"], "adopted")
+
+    def test_dead_detail_url_flags_maybe_adopted(self):
+        """A detail page that now 404s is flagged for the LLM to confirm."""
+        state = store.empty_state()
+        state["listings"]["https://x/1"] = self._qualified_entry("https://x/1")
+
+        def boom(url, **kwargs):
+            raise FetchError("404")
+
+        mod = types.SimpleNamespace(parse_detail=lambda body, listing: listing)
+        with mock.patch.object(pipeline, "fetch", side_effect=boom), \
+             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
+            flagged = pipeline._recheck_qualified_details(state)
+        self.assertEqual(len(flagged), 1)
+        self.assertEqual(state["listings"]["https://x/1"]["recheck"], "maybe_adopted")
+        # Status is left untouched since no fresh detail was parsed.
+        self.assertEqual(state["listings"]["https://x/1"]["status"], "available")
+
+    def test_skips_non_qualified_removed_and_already_flagged(self):
+        """Rejected, removed, and already-flagged entries are never re-fetched."""
+        state = store.empty_state()
+        state["listings"]["https://x/rejected"] = self._qualified_entry(
+            "https://x/rejected", verdict=store.REJECTED)
+        state["listings"]["https://x/removed"] = self._qualified_entry(
+            "https://x/removed", removed=True)
+        state["listings"]["https://x/flagged"] = self._qualified_entry(
+            "https://x/flagged", recheck="maybe_adopted")
+        with mock.patch.object(pipeline, "fetch") as fetch_mock:
+            flagged = pipeline._recheck_qualified_details(state)
+        fetch_mock.assert_not_called()
+        self.assertEqual(flagged, [])
+
+    def test_skips_source_with_no_registered_parser(self):
+        """A browser-discovered listing has no static parser and is skipped."""
+        state = store.empty_state()
+        state["listings"]["https://x/1"] = self._qualified_entry(
+            "https://x/1", source_kind="browser")
+        with mock.patch.object(pipeline, "fetch") as fetch_mock, \
+             mock.patch.object(pipeline.registry, "by_source_kind", return_value=None):
+            flagged = pipeline._recheck_qualified_details(state)
+        fetch_mock.assert_not_called()
+        self.assertEqual(flagged, [])
+
+
 if __name__ == "__main__":
     unittest.main()

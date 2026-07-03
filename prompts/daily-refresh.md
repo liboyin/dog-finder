@@ -15,7 +15,7 @@ You are the daily-refresh judge for the Sydney-area small low-shedding, low-odou
 
 ## Process
 
-1. **Load the work.** Read `pending.json` — each entry is a dog needing a decision: a new dog-only PetRescue listing (with `breed`/`size`/`sex`/`location`/`fee`/`status`), or an existing qualified dog flagged `"recheck": "maybe_adopted"` because it disappeared from PetRescue this run. Read `fetch_manifest.json` for per-source outcomes.
+1. **Load the work.** Read `pending.json` — each entry is a dog needing a decision: a new dog-only PetRescue listing (with `breed`/`size`/`sex`/`location`/`fee`/`status`), or an existing qualified dog flagged `"recheck": "maybe_adopted"` because it disappeared from its shelter's list, its own detail page stopped resolving, or that page now reports it adopted. Read `fetch_manifest.json` for per-source outcomes.
 
 2. **Cover the browser-only shelters.** In `fetch_manifest.json`, every source with `"status": "NEEDS_BROWSER"` is a JS-rendered site or a non-PetRescue own-site that code could not parse. For these — and ONLY these — drive a browser:
    - Launch a `general-purpose` subagent with `model: "haiku"` per shelter (or a small batch) to operate the **Playwright MCP or Claude-in-Chrome MCP** and extract the same fields the pipeline emits (`url, name, breed, age, sex, size, location, shelter, fee, status`). Return one fenced ```json array per subagent.
