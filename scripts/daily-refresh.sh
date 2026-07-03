@@ -107,6 +107,20 @@ CODE=$?
 kill "$WATCHDOG_PID" 2>/dev/null
 wait "$WATCHDOG_PID" 2>/dev/null
 
+# Fail loudly if the judge produced no verdicts at all (crash, auth failure, or
+# a watchdog kill before it could write anything) — this is what silently
+# recurred for 12 days during the 2026-06-22 auth outage, since nothing was
+# watching the log. A file that exists but is empty/absent is the actual
+# failure signal; a deliberate `[]` (nothing needed judging) is non-empty and
+# is NOT treated as a failure. Fires a macOS notification since this agent
+# runs in the user's GUI session and can post one directly.
+if [ ! -s "$VERDICTS" ]; then
+  echo "$(date '+%F %T %Z') FATAL: judge produced no verdicts (exit $CODE); see $STREAM" >> "$LOG"
+  MSG="Judge produced no verdicts for run $TS (exit $CODE). Check logs/daily-refresh.log."
+  osascript -e "display notification \"$MSG\" with title \"dog-finder daily refresh failed\" sound name \"Basso\"" \
+    >> "$LOG" 2>&1 || echo "$(date '+%F %T %Z') WARN: notification failed to send" >> "$LOG"
+fi
+
 # Phase 2 apply: merge the LLM's verdicts into state and re-render the index.
 # Tolerant of a missing verdicts.json (e.g. the LLM run failed) — apply just
 # re-renders from existing state in that case.

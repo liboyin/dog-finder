@@ -73,7 +73,11 @@ prose Markdown:
 - **Fail loud, fix externally.** Parsers raise on markup drift; a run records the error per source
   in the manifest, skips that shelter, and continues. "HTTP 200 but 0 cards" is also an error, so
   a silently-broken parser can't quietly drop a shelter. A human fixes the parser out-of-band and
-  commits — the failure is visible, not swallowed.
+  commits — the failure is visible, not swallowed. The same applies to the judge itself: if it
+  produces no `verdicts.json` at all (crash, auth failure, watchdog kill), the launcher fires a
+  macOS notification rather than relying on someone to notice a stale index — a broken judge went
+  unnoticed for 12 days (2026-06-22 to 2026-07-04, an expired local `claude` login) before this
+  existed, silently re-rendering the same index from unchanged state every run.
 - **A budget cap, not a throttle.** The headless `claude` invocation aborts cleanly at
   `--max-budget-usd 2.5` rather than being throttled into a multi-hour death-crawl. The figure
   comes from observed per-run cost (a low-shed run hit US$2.72) and will be revisited once the
