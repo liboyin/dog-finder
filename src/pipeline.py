@@ -179,7 +179,7 @@ def _collect_source(
     return base
 
 
-def _recheck_qualified_details(state: dict) -> list[dict]:
+def _recheck_qualified_details(state: dict) -> tuple[set[str], list[dict]]:
     """Re-fetch each qualified listing's own detail page to catch drift its
     shelter's list page won't show: a status change (e.g. available -> on-hold),
     an explicit "adopted" status while the card lingers on the shelter's list,
@@ -188,26 +188,33 @@ def _recheck_qualified_details(state: dict) -> list[dict]:
     Scoped to qualified, non-removed listings (the handful actually shown in
     the index) with a registered detail parser; browser-discovered listings
     have no static parser to re-fetch with and are skipped, matching
-    ``flag_disappeared``'s existing browser exclusion. An entry already flagged
-    this run is also skipped, since it's already headed to the LLM.
+    ``flag_disappeared``'s existing browser exclusion. Unlike that function,
+    every qualifying entry is re-fetched regardless of any recheck flag already
+    on it (from a prior day, or a card the shelter's own list page dropped this
+    run e.g. an on-hold dog) — a direct read of the dog's own page is strictly
+    more authoritative than its absence from a list render, so it can resolve a
+    stale flag on its own rather than waiting on the LLM.
 
     An unreachable detail page or one now marked "adopted" is flagged for the
-    LLM to confirm and prune (same as a listing vanishing from its list page) —
-    code detects the anomaly, the LLM confirms removal, matching how
-    ``flag_disappeared`` already handles a vanished listing. The status field is
-    still updated in either case so the index shows what was actually found
-    while confirmation is pending, rather than a stale "available".
+    LLM to confirm and prune — code detects the anomaly, the LLM confirms
+    removal, matching how ``flag_disappeared`` already handles a vanished
+    listing. Anything else confirms the dog is still up: its status is
+    refreshed, any recheck flag is cleared, and its URL is reported back so the
+    caller can count it as present before running ``flag_disappeared`` (whose
+    coarser "missing from the list page" signal would otherwise re-flag it).
 
     Args:
         state: The state document (mutated in place).
 
     Returns:
-        The list of entries newly flagged maybe_adopted because their detail
-        page is now unreachable or reports "adopted".
+        A (confirmed_urls, flagged) tuple: canonical URLs confirmed still live
+        and not adopted, and the entries newly flagged maybe_adopted because
+        their detail page is now unreachable or reports "adopted".
     """
-    flagged = []
+    confirmed: set[str] = set()
+    flagged: list[dict] = []
     for entry in state["listings"].values():
-        if entry.get("verdict") != store.QUALIFIED or entry.get("removed") or entry.get("recheck"):
+        if entry.get("verdict") != store.QUALIFIED or entry.get("removed"):
             continue
         module = registry.by_source_kind(entry.get("source_kind"))
         if module is None or not hasattr(module, "parse_detail"):
@@ -227,7 +234,10 @@ def _recheck_qualified_details(state: dict) -> list[dict]:
         if listing.status == "adopted":
             entry["recheck"] = "maybe_adopted"
             flagged.append(entry)
-    return flagged
+        else:
+            entry["recheck"] = None
+            confirmed.add(canonical(entry["url"]))
+    return confirmed, flagged
 
 
 def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
@@ -278,14 +288,14 @@ def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
         source.shelter for source in run_manifest.sources
         if source.status in (manifest.STATUS_OK, manifest.STATUS_EMPTY_OK)
     }
-    flagged = store.flag_disappeared(state, present, ts, fetched_shelters)
-    if flagged:
-        logger.info("flagged %d qualified dog(s) as maybe_adopted (vanished this run)", len(flagged))
-
-    detail_flagged = _recheck_qualified_details(state)
+    detail_confirmed, detail_flagged = _recheck_qualified_details(state)
     if detail_flagged:
         logger.info("flagged %d qualified dog(s) as maybe_adopted (detail page unreachable or adopted)",
                     len(detail_flagged))
+
+    flagged = store.flag_disappeared(state, present | detail_confirmed, ts, fetched_shelters)
+    if flagged:
+        logger.info("flagged %d qualified dog(s) as maybe_adopted (vanished this run)", len(flagged))
     flagged = flagged + detail_flagged
     store.save_state(state_path, state)
 

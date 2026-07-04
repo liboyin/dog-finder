@@ -1,6 +1,9 @@
 """Tests for the pipeline's multi-page collection loop."""
 from __future__ import annotations
 
+import json
+import os
+import tempfile
 import types
 import unittest
 from unittest import mock
@@ -107,8 +110,9 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         entry.update(overrides)
         return entry
 
-    def test_status_refreshed_from_detail_page(self):
-        """A qualified dog's detail page is re-fetched and its status updated."""
+    def test_status_refreshed_and_confirmed(self):
+        """A qualified dog's detail page is re-fetched, status updated, and its
+        URL reported back as confirmed still live."""
         state = store.empty_state()
         state["listings"]["https://x/1"] = self._qualified_entry("https://x/1")
 
@@ -119,8 +123,30 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         mod = types.SimpleNamespace(parse_detail=parse_detail)
         with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
              mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            flagged = pipeline._recheck_qualified_details(state)
+            confirmed, flagged = pipeline._recheck_qualified_details(state)
         self.assertEqual(flagged, [])
+        self.assertEqual(confirmed, {"https://x/1"})
+        self.assertEqual(state["listings"]["https://x/1"]["status"], "on-hold")
+
+    def test_confirming_fine_clears_a_stale_recheck_flag(self):
+        """A dog flagged maybe_adopted (e.g. its card dropped from a list
+        render) whose own detail page still resolves as not-adopted has its
+        flag cleared and is reported confirmed, not left flagged."""
+        state = store.empty_state()
+        state["listings"]["https://x/1"] = self._qualified_entry(
+            "https://x/1", recheck="maybe_adopted")
+
+        def parse_detail(body, listing):
+            listing.status = "on-hold"
+            return listing
+
+        mod = types.SimpleNamespace(parse_detail=parse_detail)
+        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
+             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
+            confirmed, flagged = pipeline._recheck_qualified_details(state)
+        self.assertEqual(flagged, [])
+        self.assertEqual(confirmed, {"https://x/1"})
+        self.assertIsNone(state["listings"]["https://x/1"]["recheck"])
         self.assertEqual(state["listings"]["https://x/1"]["status"], "on-hold")
 
     def test_adopted_detail_page_flags_maybe_adopted(self):
@@ -135,8 +161,9 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         mod = types.SimpleNamespace(parse_detail=parse_detail)
         with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
              mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            flagged = pipeline._recheck_qualified_details(state)
+            confirmed, flagged = pipeline._recheck_qualified_details(state)
         self.assertEqual(len(flagged), 1)
+        self.assertEqual(confirmed, set())
         self.assertEqual(state["listings"]["https://x/1"]["recheck"], "maybe_adopted")
         self.assertEqual(state["listings"]["https://x/1"]["status"], "adopted")
 
@@ -151,24 +178,24 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         mod = types.SimpleNamespace(parse_detail=lambda body, listing: listing)
         with mock.patch.object(pipeline, "fetch", side_effect=boom), \
              mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            flagged = pipeline._recheck_qualified_details(state)
+            confirmed, flagged = pipeline._recheck_qualified_details(state)
         self.assertEqual(len(flagged), 1)
+        self.assertEqual(confirmed, set())
         self.assertEqual(state["listings"]["https://x/1"]["recheck"], "maybe_adopted")
         # Status is left untouched since no fresh detail was parsed.
         self.assertEqual(state["listings"]["https://x/1"]["status"], "available")
 
-    def test_skips_non_qualified_removed_and_already_flagged(self):
-        """Rejected, removed, and already-flagged entries are never re-fetched."""
+    def test_skips_non_qualified_and_removed(self):
+        """Rejected and removed entries are never re-fetched."""
         state = store.empty_state()
         state["listings"]["https://x/rejected"] = self._qualified_entry(
             "https://x/rejected", verdict=store.REJECTED)
         state["listings"]["https://x/removed"] = self._qualified_entry(
             "https://x/removed", removed=True)
-        state["listings"]["https://x/flagged"] = self._qualified_entry(
-            "https://x/flagged", recheck="maybe_adopted")
         with mock.patch.object(pipeline, "fetch") as fetch_mock:
-            flagged = pipeline._recheck_qualified_details(state)
+            confirmed, flagged = pipeline._recheck_qualified_details(state)
         fetch_mock.assert_not_called()
+        self.assertEqual(confirmed, set())
         self.assertEqual(flagged, [])
 
     def test_skips_source_with_no_registered_parser(self):
@@ -178,9 +205,57 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
             "https://x/1", source_kind="browser")
         with mock.patch.object(pipeline, "fetch") as fetch_mock, \
              mock.patch.object(pipeline.registry, "by_source_kind", return_value=None):
-            flagged = pipeline._recheck_qualified_details(state)
+            confirmed, flagged = pipeline._recheck_qualified_details(state)
         fetch_mock.assert_not_called()
+        self.assertEqual(confirmed, set())
         self.assertEqual(flagged, [])
+
+
+class CollectRecheckIntegrationTest(unittest.TestCase):
+    """Regression coverage for the bug where a dog's card dropping out of its
+    shelter's list render (e.g. PetRescue excludes on-hold dogs from search
+    results) got it flagged maybe_adopted by flag_disappeared before the
+    detail-page recheck ever ran, leaving a stale status behind."""
+
+    def setUp(self):
+        """Silence the inter-fetch sleep so tests run fast."""
+        patcher = mock.patch("time.sleep")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_card_missing_from_list_but_detail_confirms_not_flagged(self):
+        """A qualified dog absent from its shelter's list this run, but whose
+        own detail page still resolves as on-hold (not adopted), is NOT
+        flagged maybe_adopted and gets its status refreshed."""
+        with tempfile.TemporaryDirectory() as tmp:
+            shelters_path = os.path.join(tmp, "shelters.json")
+            state_path = os.path.join(tmp, "state.json")
+            out_dir = os.path.join(tmp, "out")
+            with open(shelters_path, "w", encoding="utf-8") as f:
+                json.dump([{"name": "Fake Shelter", "listing_url": "https://fake/list"}], f)
+
+            state = store.empty_state()
+            state["listings"]["https://fake/dog/1"] = {
+                "url": "https://fake/dog/1", "verdict": store.QUALIFIED, "removed": False,
+                "source_kind": "fake", "recheck": None, "status": "available",
+                "shelter": "Fake Shelter", "first_seen": "20260101-000000",
+            }
+            store.save_state(state_path, state)
+
+            list_module = types.SimpleNamespace(
+                SOURCE_KIND="fake", parse_list=lambda body: [])  # the card is gone
+            detail_module = types.SimpleNamespace(
+                parse_detail=lambda body, listing: (setattr(listing, "status", "on-hold"), listing)[1])
+
+            with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
+                 mock.patch.object(pipeline.registry, "resolve",
+                                    return_value=(list_module, "https://fake/list")), \
+                 mock.patch.object(pipeline.registry, "by_source_kind", return_value=detail_module):
+                pipeline.collect(shelters_path, state_path, out_dir)
+
+            final = store.load_state(state_path)["listings"]["https://fake/dog/1"]
+        self.assertIsNone(final["recheck"])
+        self.assertEqual(final["status"], "on-hold")
 
 
 if __name__ == "__main__":
