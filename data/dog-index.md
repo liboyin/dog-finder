@@ -20,47 +20,12 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **date_indexed:** 2026-07-02
 - Male Maltese × Australian Silky Terrier, small, Running Stream NSW; both parents low-shedding; $1,500.  _(verify drive time)_
 
-### [NEW 2026-07-01] Charlie — Poodle (Miniature) Mix, not stated, Male
-- **URL:** https://www.petrescue.com.au/listings/1201279
-- **Shelter:** RSPCA NSW Hunter Shelter (Rutherford) (Rutherford, NSW)
-- **Status:** available · **Fee:** $500.00 · **Size:** Small
-- **date_indexed:** 2026-07-01
-- Male Miniature Poodle mix (second parent unstated), small, Rutherford NSW RSPCA Hunter; $500.  _(verify coat/breed)_
-
-### [NEW 2026-07-01] Louie — Poodle (Toy), 11 years old (senior), male
-- **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/louie2
-- **Shelter:** Wollongong Pet Connection (location unstated)
-- **Status:** available · **Fee:** not stated · **Size:** not stated
-- **date_indexed:** 2026-07-01
-- Senior 11-year-old male Toy Poodle at Wollongong Pet Connection; pure low-shedding breed.
-
-### [NEW 2026-06-27] Chasey Boy — Poodle (Miniature) Mix, not stated, Male
-- **URL:** https://www.petrescue.com.au/listings/1200750
-- **Shelter:** PetRescue NSW poodle search (aggregator) (Tullimbar, NSW)
-- **Status:** available · **Fee:** $1,600.00 · **Size:** Small
-- **date_indexed:** 2026-06-27
-- Male Miniature Poodle mix (second parent unstated), small, Tullimbar NSW near Wollongong; $1,600.  _(verify coat/breed)_
-
-### [NEW 2026-06-27] Max — Shih Tzu Mix, not stated, Male
-- **URL:** https://www.petrescue.com.au/listings/1200822
-- **Shelter:** RSPCA NSW Hunter Shelter (Rutherford) (Rutherford, NSW)
-- **Status:** available · **Fee:** $500.00 · **Size:** Small
-- **date_indexed:** 2026-06-27
-- Male Shih Tzu mix (second parent unstated), small, Rutherford NSW RSPCA Hunter; $500.  _(verify coat/breed)_
-
 ### [NEW 2026-06-26] Snowball - 9 Year Old Maltese X — Maltese Mix, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1200348
 - **Shelter:** PetRescue NSW poodle search (aggregator) (Valentine, NSW)
 - **Status:** available · **Fee:** $400.00 · **Size:** Small
 - **date_indexed:** 2026-06-26
 - Female Maltese mix (second parent unstated), small, Valentine NSW near Newcastle; $400.  _(verify coat/breed)_
-
-### [NEW 2026-06-26] Sheba — Maltese, not stated, Female
-- **URL:** https://www.petrescue.com.au/listings/1200349
-- **Shelter:** RSPCA NSW BARC Central Coast (Somersby) (Kariong, NSW)
-- **Status:** available · **Fee:** not stated · **Size:** Small
-- **date_indexed:** 2026-06-26
-- Pure Maltese female, small, RSPCA BARC Central Coast Kariong NSW; no fee listed.
 
 ### [NEW 2026-06-25] Chelsea — Maltese, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1200233
@@ -96,20 +61,6 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Status:** available · **Fee:** $400 · **Size:** Small
 - **date_indexed:** 2026-05-31
 - Shih Tzu × Maltese male, 3 years, small, $400 at AWL Eurobodalla; qualifying low-shed cross.  _(verify drive time)_
-
-### [NEW 2026-05-24] Kev — Poodle (Toy) x Pug, 10 months, male
-- **URL:** https://www.wollongong.nsw.gov.au/animal-adoptions/dogs/kev
-- **Shelter:** City of Wollongong Animal Shelter (Wollongong, NSW)
-- **Status:** available · **Fee:** not stated · **Size:** toy
-- **date_indexed:** 2026-05-24
-- Young toy poodle–pug cross available at Wollongong city shelter; fee not listed on council page.
-
-### [NEW 2026-05-20] Milo — Labradoodle, 8y, male
-- **URL:** https://www.petrescue.com.au/listings/1187908
-- **Shelter:** Dog Rescue Newcastle (Newcastle, NSW)
-- **Status:** available · **Fee:** $300 · **Size:** medium
-- **date_indexed:** 2026-05-20
-- Incredibly social and friendly Labradoodle with a beautiful nature, though he resource-guards around food and must be the only pet in the home.
 
 <!-- DOGS:END -->
 
