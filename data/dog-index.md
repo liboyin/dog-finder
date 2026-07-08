@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-07-07
+- **Last refreshed:** 2026-07-08
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -16,14 +16,14 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ### [NEW 2026-07-07] Cheeky Boy — Bichon Frise x Poodle (Toy) Mix, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1202467
 - **Shelter:** PetRescue NSW poodle search (aggregator) (San Remo, NSW)
-- **Status:** available · **Fee:** $1,500.00 · **Size:** Small
+- **Status:** on-hold · **Fee:** $1,500.00 · **Size:** Small
 - **date_indexed:** 2026-07-07
 - Male poochon (Bichon Frise × Toy Poodle), small, San Remo NSW, $1,500 adoption fee.
 
 ### [NEW 2026-07-07] Tully — Bichon Frise x Poodle (Toy) Mix, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1202486
 - **Shelter:** PetRescue NSW poodle search (aggregator) (San Remo, NSW)
-- **Status:** available · **Fee:** $1,500.00 · **Size:** Small
+- **Status:** on-hold · **Fee:** $1,500.00 · **Size:** Small
 - **date_indexed:** 2026-07-07
 - Female poochon (Bichon Frise × Toy Poodle), small, San Remo NSW, $1,500 adoption fee.
 
@@ -47,13 +47,6 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Status:** on-hold · **Fee:** $400.00 · **Size:** Small
 - **date_indexed:** 2026-06-26
 - Female Maltese mix (second parent unstated), small, Valentine NSW near Newcastle; $400.  _(verify coat/breed)_
-
-### [NEW 2026-06-25] Chelsea — Maltese, not stated, Female
-- **URL:** https://www.petrescue.com.au/listings/1200233
-- **Shelter:** PetRescue NSW poodle search (aggregator) (Shellharbour City Centre, NSW)
-- **Status:** available · **Fee:** $300.00 · **Size:** Small
-- **date_indexed:** 2026-06-25
-- Pure Maltese female, small, Shellharbour City Centre NSW; $300.
 
 ### [NEW 2026-06-25] Benny & Toko — Shih Tzu x Maltese, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1200245
