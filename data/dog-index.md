@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-07-08
+- **Last refreshed:** 2026-07-11
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -13,10 +13,17 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
 
+### [NEW 2026-07-11] Tilda — Shih Tzu x Poodle (Miniature), not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1203263
+- **Shelter:** PetRescue NSW poodle search (aggregator) (Running Stream, NSW)
+- **Status:** available · **Fee:** $1,500.00 · **Size:** Small
+- **date_indexed:** 2026-07-11
+- Female shihpoo (Shih Tzu × Mini Poodle), small, available for $1,500 from Running Stream NSW.  _(verify drive time)_
+
 ### [NEW 2026-07-07] Cheeky Boy — Bichon Frise x Poodle (Toy) Mix, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1202467
 - **Shelter:** PetRescue NSW poodle search (aggregator) (San Remo, NSW)
-- **Status:** on-hold · **Fee:** $1,500.00 · **Size:** Small
+- **Status:** available · **Fee:** $1,500.00 · **Size:** Small
 - **date_indexed:** 2026-07-07
 - Male poochon (Bichon Frise × Toy Poodle), small, San Remo NSW, $1,500 adoption fee.
 
@@ -32,7 +39,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** PAWS (Providing Animals with Support) (Sydney Metropolitan area)
 - **Status:** available · **Fee:** not stated · **Size:** Toy
 - **date_indexed:** 2026-07-05
-- Maltese x Shih Tzu cross, approx. 2 years, female, toy size, available in Sydney via PAWS foster care.
+- Female malshi (Maltese × Shih Tzu), toy-sized, 2 years old, available in Sydney NSW via PAWS.
 
 ### [NEW 2026-07-02] Fluffy — Maltese x Australian Silky Terrier Mix, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1201259
@@ -51,7 +58,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ### [NEW 2026-06-25] Benny & Toko — Shih Tzu x Maltese, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1200245
 - **Shelter:** PetRescue NSW poodle search (aggregator) (Erskineville, NSW)
-- **Status:** available · **Fee:** $1,000.00 · **Size:** Small
+- **Status:** on-hold · **Fee:** $1,000.00 · **Size:** Small
 - **date_indexed:** 2026-06-25
 - Male Shih Tzu × Maltese pair (malshi), small, Erskineville inner Sydney NSW; $1,000.
 
