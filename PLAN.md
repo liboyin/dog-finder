@@ -10,7 +10,7 @@ Flip a row to `DONE` **in the same commit** that completes the work package, and
 
 | WP | Title | Status |
 |----|-------|--------|
-| WP1 | Confirmed rechecks bump `last_seen` | TODO |
+| WP1 | Confirmed rechecks bump `last_seen` | DONE |
 | WP2 | `FetchError` status + `recheck_reason` | TODO |
 | WP3 | Browser-dog staleness recheck | TODO |
 | WP4 | `EMPTY_OK` out of `n_errors` | TODO |

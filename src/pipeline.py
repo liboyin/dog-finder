@@ -179,7 +179,7 @@ def _collect_source(
     return base
 
 
-def _recheck_qualified_details(state: dict) -> tuple[set[str], list[dict]]:
+def _recheck_qualified_details(state: dict, ts: str) -> tuple[set[str], list[dict]]:
     """Re-fetch each qualified listing's own detail page to catch drift its
     shelter's list page won't show: a status change (e.g. available -> on-hold),
     an explicit "adopted" status while the card lingers on the shelter's list,
@@ -199,12 +199,16 @@ def _recheck_qualified_details(state: dict) -> tuple[set[str], list[dict]]:
     LLM to confirm and prune — code detects the anomaly, the LLM confirms
     removal, matching how ``flag_disappeared`` already handles a vanished
     listing. Anything else confirms the dog is still up: its status is
-    refreshed, any recheck flag is cleared, and its URL is reported back so the
-    caller can count it as present before running ``flag_disappeared`` (whose
-    coarser "missing from the list page" signal would otherwise re-flag it).
+    refreshed, its ``last_seen`` is bumped to this run (a direct detail-page
+    confirmation is a sighting, so a long-on-hold dog dropped from its list
+    render isn't pruned despite being confirmed live daily), any recheck flag
+    is cleared, and its URL is reported back so the caller can count it as
+    present before running ``flag_disappeared`` (whose coarser "missing from the
+    list page" signal would otherwise re-flag it).
 
     Args:
         state: The state document (mutated in place).
+        ts: This run's timestamp, recorded as ``last_seen`` on confirmed dogs.
 
     Returns:
         A (confirmed_urls, flagged) tuple: canonical URLs confirmed still live
@@ -236,6 +240,7 @@ def _recheck_qualified_details(state: dict) -> tuple[set[str], list[dict]]:
             flagged.append(entry)
         else:
             entry["recheck"] = None
+            entry["last_seen"] = ts
             confirmed.add(canonical(entry["url"]))
     return confirmed, flagged
 
@@ -288,7 +293,7 @@ def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
         source.shelter for source in run_manifest.sources
         if source.status in (manifest.STATUS_OK, manifest.STATUS_EMPTY_OK)
     }
-    detail_confirmed, detail_flagged = _recheck_qualified_details(state)
+    detail_confirmed, detail_flagged = _recheck_qualified_details(state, ts)
     if detail_flagged:
         logger.info("flagged %d qualified dog(s) as maybe_adopted (detail page unreachable or adopted)",
                     len(detail_flagged))

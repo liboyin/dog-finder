@@ -106,6 +106,7 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         entry = {
             "url": url, "verdict": store.QUALIFIED, "removed": False,
             "source_kind": "fake", "recheck": None, "status": "available",
+            "last_seen": "20260101-000000",
         }
         entry.update(overrides)
         return entry
@@ -123,10 +124,12 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         mod = types.SimpleNamespace(parse_detail=parse_detail)
         with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
              mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            confirmed, flagged = pipeline._recheck_qualified_details(state)
+            confirmed, flagged = pipeline._recheck_qualified_details(state, "TS")
         self.assertEqual(flagged, [])
         self.assertEqual(confirmed, {"https://x/1"})
         self.assertEqual(state["listings"]["https://x/1"]["status"], "on-hold")
+        # A confirmed detail recheck counts as a sighting, so last_seen advances.
+        self.assertEqual(state["listings"]["https://x/1"]["last_seen"], "TS")
 
     def test_confirming_fine_clears_a_stale_recheck_flag(self):
         """A dog flagged maybe_adopted (e.g. its card dropped from a list
@@ -143,7 +146,7 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         mod = types.SimpleNamespace(parse_detail=parse_detail)
         with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
              mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            confirmed, flagged = pipeline._recheck_qualified_details(state)
+            confirmed, flagged = pipeline._recheck_qualified_details(state, "TS")
         self.assertEqual(flagged, [])
         self.assertEqual(confirmed, {"https://x/1"})
         self.assertIsNone(state["listings"]["https://x/1"]["recheck"])
@@ -161,11 +164,13 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         mod = types.SimpleNamespace(parse_detail=parse_detail)
         with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
              mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            confirmed, flagged = pipeline._recheck_qualified_details(state)
+            confirmed, flagged = pipeline._recheck_qualified_details(state, "TS")
         self.assertEqual(len(flagged), 1)
         self.assertEqual(confirmed, set())
         self.assertEqual(state["listings"]["https://x/1"]["recheck"], "maybe_adopted")
         self.assertEqual(state["listings"]["https://x/1"]["status"], "adopted")
+        # A flagged (adopted) dog is not a sighting; last_seen is left untouched.
+        self.assertEqual(state["listings"]["https://x/1"]["last_seen"], "20260101-000000")
 
     def test_dead_detail_url_flags_maybe_adopted(self):
         """A detail page that now 404s is flagged for the LLM to confirm."""
@@ -178,12 +183,14 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         mod = types.SimpleNamespace(parse_detail=lambda body, listing: listing)
         with mock.patch.object(pipeline, "fetch", side_effect=boom), \
              mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            confirmed, flagged = pipeline._recheck_qualified_details(state)
+            confirmed, flagged = pipeline._recheck_qualified_details(state, "TS")
         self.assertEqual(len(flagged), 1)
         self.assertEqual(confirmed, set())
         self.assertEqual(state["listings"]["https://x/1"]["recheck"], "maybe_adopted")
         # Status is left untouched since no fresh detail was parsed.
         self.assertEqual(state["listings"]["https://x/1"]["status"], "available")
+        # A flagged (dead-URL) dog is not a sighting; last_seen is left untouched.
+        self.assertEqual(state["listings"]["https://x/1"]["last_seen"], "20260101-000000")
 
     def test_skips_non_qualified_and_removed(self):
         """Rejected and removed entries are never re-fetched."""
@@ -193,7 +200,7 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         state["listings"]["https://x/removed"] = self._qualified_entry(
             "https://x/removed", removed=True)
         with mock.patch.object(pipeline, "fetch") as fetch_mock:
-            confirmed, flagged = pipeline._recheck_qualified_details(state)
+            confirmed, flagged = pipeline._recheck_qualified_details(state, "TS")
         fetch_mock.assert_not_called()
         self.assertEqual(confirmed, set())
         self.assertEqual(flagged, [])
@@ -205,7 +212,7 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
             "https://x/1", source_kind="browser")
         with mock.patch.object(pipeline, "fetch") as fetch_mock, \
              mock.patch.object(pipeline.registry, "by_source_kind", return_value=None):
-            confirmed, flagged = pipeline._recheck_qualified_details(state)
+            confirmed, flagged = pipeline._recheck_qualified_details(state, "TS")
         fetch_mock.assert_not_called()
         self.assertEqual(confirmed, set())
         self.assertEqual(flagged, [])
