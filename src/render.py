@@ -16,6 +16,8 @@ _REGION_RE = re.compile(
 )
 _LAST_REFRESHED_RE = re.compile(r"(- \*\*Last refreshed:\*\*\s*).*")
 _URL_LINE_RE = re.compile(r"^- \*\*URL:\*\* (\S+)", re.M)
+_TAG_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"\s+")
 
 
 def index_dog_urls(md: str) -> set[str]:
@@ -66,9 +68,33 @@ def _as_date(first_seen: str | None) -> str:
     return f"{first_seen[0:4]}-{first_seen[4:6]}-{first_seen[6:8]}"
 
 
+def _sanitize(text) -> str:
+    """Neutralize scraped/LLM text for safe Markdown interpolation.
+
+    Strips HTML tags, escapes backslashes and the Markdown link brackets ``[``
+    and ``]``, and collapses whitespace, so a hostile field like
+    ``](http://evil) <script>x</script>`` — or a pre-escaped ``\\[x\\](url)`` —
+    renders as inert text rather than an injected link/element. The backslash is
+    escaped first, otherwise an attacker's leading ``\\`` would consume the
+    ``\\`` we add and re-expose the bracket. A non-string value is coerced so one
+    numeric LLM field can't crash the whole index render. URLs are validated at
+    ingestion (``store.apply_verdicts``), not escaped here, so the URL line stays
+    clickable. Bare URLs in text still autolink (undisguised) — accepted.
+
+    Args:
+        text: The raw field value to sanitize.
+
+    Returns:
+        The sanitized single-line string.
+    """
+    text = _TAG_RE.sub("", str(text))
+    text = text.replace("\\", "\\\\").replace("[", r"\[").replace("]", r"\]")
+    return _WS_RE.sub(" ", text).strip()
+
+
 def _value(text: str | None, fallback: str = "not stated") -> str:
-    """Return text or a fallback when it is None/empty."""
-    return text if text else fallback
+    """Return sanitized text or a fallback when it is None/empty."""
+    return _sanitize(text) if text else fallback
 
 
 def render_block(entry: dict) -> str:
@@ -87,7 +113,7 @@ def render_block(entry: dict) -> str:
         _value(entry.get("sex")),
     ]
     tags = entry.get("tags") or []
-    tag_suffix = f"  _({', '.join(tags)})_" if tags else ""
+    tag_suffix = f"  _({', '.join(_sanitize(t) for t in tags)})_" if tags else ""
     return "\n".join(
         [
             f"### [NEW {date}] {_value(entry.get('name'), 'Unnamed')} — {', '.join(headline_bits)}",

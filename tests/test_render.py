@@ -48,6 +48,36 @@ class RenderBlockTest(unittest.TestCase):
             dict(ENTRY, shelter=None, source=None)))
 
 
+class SanitizeTest(unittest.TestCase):
+    def test_hostile_field_renders_inert(self):
+        """A markdown-link/HTML injection in a field is neutralized, not rendered live."""
+        block = render.render_block(dict(ENTRY, name="](http://evil) <script>x</script>"))
+        self.assertNotIn("<script>", block)
+        self.assertIn(r"\]", block)  # link bracket escaped so it can't form a link
+
+    def test_legitimate_punctuation_preserved(self):
+        """Parentheses in locations and $ in fees render unchanged."""
+        block = render.render_block(dict(ENTRY, location="Sydney (Inner West), NSW", fee="$300"))
+        self.assertIn("Sydney (Inner West), NSW", block)
+        self.assertIn("$300", block)
+
+    def test_tags_are_sanitized(self):
+        """Tag text is stripped of HTML like any other interpolated field."""
+        block = render.render_block(dict(ENTRY, tags=["<b>verify</b> drive time"]))
+        self.assertNotIn("<b>", block)
+        self.assertIn("verify", block)
+
+    def test_sanitize_escapes_backslash_before_brackets(self):
+        """A leading backslash is doubled so it can't neutralize the bracket escape."""
+        # r"\[" (backslash + bracket) must become r"\\\[" (escaped backslash + escaped bracket).
+        self.assertEqual(render._sanitize("\\["), "\\\\\\[")
+
+    def test_non_string_field_does_not_crash(self):
+        """A numeric field (e.g. an LLM-emitted fee) is coerced, not crashed on."""
+        block = render.render_block(dict(ENTRY, fee=300))
+        self.assertIn("300", block)
+
+
 class RenderIndexTest(unittest.TestCase):
     def test_region_replaced_and_date_updated(self):
         """The managed region is replaced and Last refreshed is updated."""

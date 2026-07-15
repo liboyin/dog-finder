@@ -207,6 +207,38 @@ class ApplyVerdictsTest(unittest.TestCase):
         store.apply_verdicts(state, [{"url": "https://x/listings/1", "verdict": "qualified", "removed": True}], TS2)
         self.assertEqual(store.qualified_for_render(state), [])
 
+    def test_ignores_verdict_with_unsafe_url(self):
+        """A verdict whose url isn't a clean http(s) URL never creates an entry."""
+        state = store.empty_state()
+        store.apply_verdicts(state, [
+            {"url": "javascript:alert(1)", "verdict": "qualified", "name": "X"},
+            {"url": "https://ok/1 <script>", "verdict": "qualified"},
+        ], TS2)
+        self.assertEqual(state["listings"], {})
+
+    def test_rejects_verdict_url_with_link_brackets(self):
+        """A verdict url carrying markdown link brackets is rejected, not stored
+        raw onto the unsanitized index URL line."""
+        state = store.empty_state()
+        store.apply_verdicts(state, [
+            {"url": "https://x/[click](http://evil)", "verdict": "qualified"},
+        ], TS2)
+        self.assertEqual(state["listings"], {})
+
+    def test_caps_overlong_string_fields(self):
+        """A stored string field longer than the cap is truncated (bounds state size)."""
+        state = store.empty_state()
+        store.apply_verdicts(state, [
+            {"url": "https://x/1", "verdict": "qualified", "summary": "z" * 500},
+        ], TS2)
+        self.assertEqual(len(state["listings"]["https://x/1"]["summary"]), store.MAX_FIELD_LEN)
+
+    def test_new_entry_missing_verdict_defaults_pending(self):
+        """A new URL with no verdict becomes pending (visible next run), not an orphan."""
+        state = store.empty_state()
+        store.apply_verdicts(state, [{"url": "https://x/1", "name": "Newbie"}], TS2)
+        self.assertEqual(state["listings"]["https://x/1"]["verdict"], store.PENDING)
+
     def test_two_fragment_dogs_on_one_page_coexist(self):
         """Two dogs sharing a page URL but distinct #slug fragments both persist, neither overwriting the other."""
         state = store.empty_state()

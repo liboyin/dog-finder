@@ -8,6 +8,7 @@ the LLM only emits verdicts that ``apply_verdicts`` merges in.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 
@@ -15,6 +16,12 @@ from src.dedup import canonical
 from src.parsers.base import Listing
 
 STATE_VERSION = 1
+
+# Cap on any single stored string field, so a hostile/oversized scraped or LLM
+# value can't bloat state.json (summaries are <=25 words by contract anyway).
+MAX_FIELD_LEN = 200
+
+logger = logging.getLogger("dog_finder.store")
 
 # Verdicts.
 PENDING = "pending"
@@ -236,12 +243,40 @@ def qualified_for_render(state: dict) -> list[dict]:
     return sorted(entries, key=lambda e: e.get("first_seen") or "", reverse=True)
 
 
+def _valid_verdict_url(url) -> bool:
+    """True if a verdict URL is a safe http(s) key with no injection characters.
+
+    A verdict for an unknown URL creates a new state entry keyed on it and is
+    rendered verbatim on the index's unsanitized URL line, so a malformed or
+    hostile URL is rejected: a non-string, a non-http(s) scheme (e.g.
+    ``javascript:``), or any whitespace, angle bracket, or Markdown link bracket
+    (``[``/``]``) — the last would let ``…[text](evil)…`` render as a disguised
+    link. Parentheses stay allowed (legal in real URLs and inert without a
+    preceding ``]``).
+    """
+    if not isinstance(url, str):
+        return False
+    if not (url.startswith("http://") or url.startswith("https://")):
+        return False
+    return not any(char in url for char in " \t\n\r<>[]")
+
+
+def _cap(value):
+    """Truncate a stored string field to MAX_FIELD_LEN; pass non-strings through."""
+    if isinstance(value, str) and len(value) > MAX_FIELD_LEN:
+        return value[:MAX_FIELD_LEN]
+    return value
+
+
 def apply_verdicts(state: dict, verdicts: list[dict], ts: str) -> None:
     """Merge LLM verdicts into the state.
 
     Each verdict is a dict with at least ``url`` and ``verdict``. Browser-found
     dogs (URLs not yet in state) are created from the verdict's fields. A verdict
     may also set ``removed`` (e.g. confirmed adopted) and ``summary``/``tags``.
+    A verdict whose ``url`` is not a clean http(s) URL is ignored (logged), and
+    every stored string field is capped at ``MAX_FIELD_LEN`` — the LLM output is
+    untrusted input that keys and populates the human-facing index.
 
     Args:
         state: The state document (mutated in place).
@@ -252,26 +287,35 @@ def apply_verdicts(state: dict, verdicts: list[dict], ts: str) -> None:
         url = verdict.get("url")
         if not url:
             continue
+        if not _valid_verdict_url(url):
+            logger.warning("apply_verdicts: ignoring verdict with invalid url %r", url)
+            continue
         key = canonical(url)
         entry = state["listings"].get(key)
         if entry is None:
             entry = {
                 "url": url,
                 "source_kind": verdict.get("source_kind", "browser"),
-                "source": verdict.get("source"),
+                "source": _cap(verdict.get("source")),
                 "first_seen": ts,
                 "removed": False,
+                # Default to pending so a verdict that omits `verdict` on a new URL
+                # becomes a visible candidate next run, not an invisible orphan.
+                "verdict": PENDING,
             }
             for field in ("name", "breed", "age", "sex", "size", "location", "shelter", "fee", "status"):
-                entry[field] = verdict.get(field)
+                entry[field] = _cap(verdict.get(field))
             state["listings"][key] = entry
         entry["last_seen"] = ts
         if verdict.get("verdict") in (QUALIFIED, REJECTED, PENDING):
             entry["verdict"] = verdict["verdict"]
         if "summary" in verdict:
-            entry["summary"] = verdict["summary"]
+            entry["summary"] = _cap(verdict["summary"])
         if "tags" in verdict:
-            entry["tags"] = verdict["tags"]
+            tags = verdict["tags"]
+            # Normalize to a capped list; a non-list (e.g. a bare string) would
+            # otherwise render char-by-char, so drop it to an empty list.
+            entry["tags"] = [_cap(str(tag)) for tag in tags] if isinstance(tags, list) else []
         if verdict.get("removed"):
             entry["removed"] = True
         # A judged listing no longer needs re-checking.

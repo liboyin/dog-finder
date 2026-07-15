@@ -19,7 +19,7 @@ Flip a row to `DONE` **in the same commit** that completes the work package, and
 | WP12 | Remove `flag_disappeared` | DONE |
 | WP7 | Per-dog identity on shared-URL pages | DONE |
 | WP8 | Split `source` vs `shelter` | DONE |
-| WP10 | Sanitize rendered content | TODO |
+| WP10 | Sanitize rendered content | DONE |
 | WP11 | Run/log retention | TODO |
 | WP9 | Judge permission allowlist | TODO |
 | WP13 | Residual documentation fixes | TODO |
