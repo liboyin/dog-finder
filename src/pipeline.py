@@ -511,7 +511,7 @@ def main() -> int:
     apply_parser.add_argument("--verdicts", required=True)
     apply_parser.add_argument("--index", required=True)
 
-    check_parser = sub.add_parser("index-check", help="print 'commit' if a dog was dropped since HEAD, else 'keep'")
+    check_parser = sub.add_parser("index-check", help="print 'commit' if a dog was added or dropped since HEAD, else 'keep'")
     check_parser.add_argument("--index", required=True)
 
     args = parser.parse_args()

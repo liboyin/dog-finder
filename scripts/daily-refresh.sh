@@ -27,6 +27,30 @@ export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 mkdir -p "$RUNS" "$DIR/logs"
 cd "$DIR" || { echo "$(date '+%F %T %Z') FATAL: cannot cd to $DIR" >> "$LOG"; exit 1; }
 
+# Overlap lock: a mkdir on a directory is atomic, so it doubles as a mutex. If
+# a run is still alive when the next 13:00 slot fires, skip this slot rather
+# than corrupting state with two concurrent writers. A lock older than 4 hours
+# is assumed left behind by a crashed run (the watchdog caps a healthy run well
+# under that) and is broken and retaken.
+LOCK="$DIR/.run.lock"
+if ! mkdir "$LOCK" 2>/dev/null; then
+  # Hardcode /usr/bin/stat (BSD syntax): a GNU stat earlier on PATH would reject
+  # -f and misread every held lock as stale, breaking a live run's lock.
+  LOCK_AGE=$(( $(date +%s) - $(/usr/bin/stat -f %m "$LOCK" 2>/dev/null || echo 0) ))
+  if [ "$LOCK_AGE" -gt 14400 ]; then
+    echo "$(date '+%F %T %Z') WARN: run lock older than 4h; treating as stale and retaking" >> "$LOG"
+    rmdir "$LOCK" 2>/dev/null
+    if ! mkdir "$LOCK" 2>/dev/null; then
+      echo "$(date '+%F %T %Z') another run holds the lock; skipping" >> "$LOG"
+      exit 0
+    fi
+  else
+    echo "$(date '+%F %T %Z') another run holds the lock; skipping" >> "$LOG"
+    exit 0
+  fi
+fi
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+
 TS="$(date '+%Y%m%d-%H%M%S')"
 RUNDIR="$RUNS/$TS"
 mkdir -p "$RUNDIR"
@@ -140,7 +164,9 @@ if [ -n "$(git status --porcelain -- "$INDEX" "$STATE")" ]; then
   DECISION="$(/usr/bin/python3 -m src.pipeline index-check --index "$INDEX" 2>>"$LOG")"
   if [ "$DECISION" = "commit" ]; then
     git add "$INDEX" "$STATE"
-    if git commit -m "Automated run on $(date '+%F')" >> "$LOG" 2>&1; then
+    # Scope the commit to these two paths so anything a human left staged is
+    # never swept into an automated commit.
+    if git commit -m "Automated run on $(date '+%F')" -- "$INDEX" "$STATE" >> "$LOG" 2>&1; then
       echo "$(date '+%F %T %Z') committed index/state (dog list changed)" >> "$LOG"
       # Publish the commit so the GitHub copy tracks the local membership change.
       # Non-fatal: a push failure (e.g. no network) leaves the commit local for
@@ -161,7 +187,7 @@ else
 fi
 
 # Tier 1: parse the final result event for aggregate + per-model usage.
-python3 "$DIR/src/parse_usage.py" "$STREAM" "$REPORT" "$TS" "$CODE" >> "$USAGE_LOG" 2>>"$LOG"
+/usr/bin/python3 "$DIR/src/parse_usage.py" "$STREAM" "$REPORT" "$TS" "$CODE" >> "$USAGE_LOG" 2>>"$LOG"
 
 # Mirror the readable report into the main log if we got one.
 if [ -s "$REPORT" ]; then
