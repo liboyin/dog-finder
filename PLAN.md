@@ -1,140 +1,236 @@
 # PLAN.md — dog-finder improvement plan (execution hand-over)
 
 - **Finalized:** 2026-07-10. Review evidence is from the 2026-07-05 snapshot (state, index, logs); the daily job has run since, so re-verify specifics like `last_seen` values before relying on them.
-- **Authority:** every decision in §3 was confirmed by the owner (2026-07-06/10). Do not re-open them. If you hit a genuine ambiguity §3–§5 doesn't cover, stop and ask the owner (per AGENTS.md).
+- **Authority:** every decision in §3 was confirmed by the owner. Do not re-open them. If you hit a genuine ambiguity that §3–§5 doesn't cover, **stop and ask the owner** (AGENTS.md meta guideline) — do not guess on contract-level questions.
 - **Audience:** an agent executing one or more work packages (§4) with no other context. Read `AGENTS.md` and `README.md` first; this file assumes both.
+
+## 0. Progress tracker
+
+Flip a row to `DONE` **in the same commit** that completes the work package, and put `(WPn)` in the commit's one-line summary so history maps to this table.
+
+| WP | Title | Status |
+|----|-------|--------|
+| WP1 | Confirmed rechecks bump `last_seen` | TODO |
+| WP2 | `FetchError` status + `recheck_reason` | TODO |
+| WP3 | Browser-dog staleness recheck | TODO |
+| WP4 | `EMPTY_OK` out of `n_errors` | TODO |
+| WP5 | Launcher hardening | TODO |
+| WP6 | Drop Labradoodle Association source | TODO |
+| WP12 | Remove `flag_disappeared` | TODO |
+| WP7 | Per-dog identity on shared-URL pages | TODO |
+| WP8 | Split `source` vs `shelter` | TODO |
+| WP10 | Sanitize rendered content | TODO |
+| WP11 | Run/log retention | TODO |
+| WP9 | Judge permission allowlist | TODO |
+| WP13 | Residual documentation fixes | TODO |
+
+**Recommended order** (rows above are in it): WP1–WP6 in any order (independent) → WP12 (needs WP2+WP3; doing it before WP8 means WP8 never touches `flag_disappeared`) → WP7 → WP8 → WP10 → WP11 → WP9 (its paid verification run needs scheduling care) → WP13 last.
 
 ---
 
 ## 1. System facts an executor must know
 
-- **Runtime:** stock macOS Python (`/usr/bin/python3`, 3.9.6), **stdlib only** — no new dependencies. Modern annotations are fine only via the existing `from __future__ import annotations` pattern; no ≥3.10 runtime syntax.
-- **Tests:** `/usr/bin/python3 -m unittest discover -s tests` — 59 pass as of hand-over. Must stay green on 3.9.6. New/changed non-test functions need Google-style docstrings; test functions need a one-line docstring (AGENTS.md).
-- **Live schedule:** a launchd job runs `scripts/daily-refresh.sh` at 13:00 (machine local = Australia/Sydney) daily. It mutates `data/state.json` + `data/dog-index.md`, and commits **and pushes** `main` when the index's dog membership changed.
-- **Run flow:** `prune` → `collect` (writes `runs/<ts>/pending.json` + `fetch_manifest.json`, updates state) → headless `claude` judge (writes `runs/<ts>/verdicts.json`) → `apply` (merges verdicts, re-renders index) → conditional commit/push → usage parsing.
-- **Key invariant:** code owns `state.json` and the rendered region of `dog-index.md`; the LLM's only write is `verdicts.json`. Preserve this in every change.
+### 1.1 Repo map
+
+| Path | Responsibility |
+|---|---|
+| `src/pipeline.py` | CLI + orchestration: `prune` / `collect` / `apply` / `index-check` subcommands; pagination loop; qualified-detail recheck; git-diff commit gate |
+| `src/store.py` | State document: load/save (atomic), upsert/touch, disappearance flagging, prune, pending selection, verdict merge |
+| `src/fetch.py` | HTTP GET with UA, timeout, one retry; `FetchError` |
+| `src/dedup.py` | `canonical(url)` — the state key function |
+| `src/render.py` | Renders qualified entries into the marked region of `data/dog-index.md`; index-membership diff helpers |
+| `src/manifest.py` | Per-source run outcomes (`SourceResult`, status constants) |
+| `src/parsers/` | `base.py` (Listing, ParseError, text helpers), `petrescue.py`, `wollongong.py`, `registry.py` (host→parser; `SOURCE_KIND`→parser) |
+| `src/parse_usage.py` | Parses the judge's stream-json for `logs/usage.log` (Claude-Code-specific; standalone script) |
+| `scripts/daily-refresh.sh` | zsh launcher run by launchd: prune → collect → `claude -p` judge (watchdog, budget) → apply → conditional commit/push → usage parse |
+| `prompts/daily-refresh.md` | Judge instructions; the launcher extracts everything after the first `---` line |
+| `config/shelters.json` | Source list (name, region, listing_url, optional petrescue_url, optional `render: js\|dead`) |
+| `data/state.json` | Authoritative record, keyed by `canonical(url)` (~2,240 entries, tracked in git) |
+| `data/dog-index.md` | Human artifact; only the `<!-- DOGS:BEGIN/END -->` region is machine-managed |
+| `deploy/*.plist` | launchd agent definition (13:00 daily) |
+| `runs/<ts>/`, `logs/` | Per-run artifacts and logs — **gitignored**, never stage them |
+| `tests/` | `unittest` suite + HTML fixtures in `tests/fixtures/` |
+
+### 1.2 Environment & conventions
+
+- **Runtime:** stock macOS Python (`/usr/bin/python3`, **3.9.6**), stdlib only — no new dependencies, no ≥3.10 runtime syntax. Modern type annotations are fine only because every module has `from __future__ import annotations`; keep that pattern in new files.
+- **Tests:** `/usr/bin/python3 -m unittest discover -s tests` — 59 pass at hand-over, runs in <1 s, no network. This is the gate for every commit. The suite is plain `unittest` (pytest is *not* installed for the system interpreter — don't write pytest-isms).
+- **Docstrings (AGENTS.md):** Google style for new/changed non-test functions; one-line docstrings for test methods.
+- **Test idioms to reuse** (see `tests/test_pipeline.py`): patch `time.sleep` in `setUp` via `mock.patch`; fake fetches with `mock.patch.object(pipeline, "fetch", side_effect=...)` returning `FetchResult(url=u, status=200, body=u, bytes=len(u))`; fake parser modules with `types.SimpleNamespace(parse_list=..., parse_detail=..., SOURCE_KIND=...)`.
+- **State entry shape** (see `store._entry_from_listing`): `url, name, breed, age, sex, size, species, location, shelter, fee, status, source_kind, first_seen, last_seen, verdict(pending|qualified|rejected), summary, tags, removed, recheck`. Timestamps are `YYYYMMDD-HHMMSS` strings compared lexically.
+- **Key invariant:** code owns `state.json` and the rendered index region; the LLM's only write is `verdicts.json`. Preserve this in every change.
+
+### 1.3 The live schedule
+
+A launchd job (`com.dog-finder.daily-refresh`) runs `scripts/daily-refresh.sh` at **13:00 local (Australia/Sydney)** daily. It mutates `data/*`, and commits **and pushes** `main` when index membership changed. A run takes roughly 5–15 minutes.
 
 ## 2. Ground rules for executors
 
-1. **Sequence with the live job; don't pause it.** Do not `launchctl unload`. Don't leave the repo in a broken or half-migrated condition across 13:00 — finish and commit a work package, or don't start it. (Owner decision §3.9.)
-2. **Commit straight to `main`**, one work package per commit, AGENTS.md message format (`Claude: <summary>` + one paragraph; **no** Co-Authored-By). The daily job may auto-push your commits — accepted. Never `git add` more than your own files; `data/*` is routinely dirty from daily runs — leave it unstaged.
-3. **Paid verification runs are authorized** when a work package requires end-to-end verification (WP9 does; most don't): invoke `scripts/daily-refresh.sh` manually, capped at `--max-budget-usd 2.5` (the existing cap — do not raise it). Protocol in §6. Prefer unit tests wherever they suffice.
-4. **Update documentation in the same commit** that makes it stale (AGENTS.md). Each WP below lists its doc obligations; WP13 covers only *pre-existing* drift.
-5. §7 lists things deliberately **out of scope** — do not "improve" them in passing.
+Important note: This plan may be executed on a computer that does not host the daily job. Never set up the job unless explicitly asked to.
+
+1. **Sequence with the live job; don't pause it.** No `launchctl` changes. Don't leave the repo broken or half-migrated across 13:00 — finish and commit a work package, or don't start it. `data/state.json` and `data/dog-index.md` are routinely dirty from "keep-local" daily runs; that is normal — **never stage or revert them**.
+2. **Commit straight to `main`**, one WP per commit, AGENTS.md format — `Claude: <one-line summary> (WPn)` plus one explanatory paragraph, **no** Co-Authored-By. The daily job may auto-push your commits; accepted. Do not push manually unless a WP says so.
+3. **Sandbox procedure** for exercising the pipeline by hand: copy state first —
+   `SCRATCH=$(mktemp -d); cp data/state.json "$SCRATCH/"; /usr/bin/python3 -m src.pipeline collect --shelters config/shelters.json --state "$SCRATCH/state.json" --out "$SCRATCH/out"`.
+   Note a real `collect` fetches ~40 live shelter pages over several minutes — prefer unit tests; use live collect only when a WP explicitly calls for it, and never point ad-hoc runs at `data/state.json`.
+4. **Paid runs:** only WP9 requires an end-to-end judge run. Protocol in §6; cost ≤ $2.50 per attempt (the built-in cap — do not change it). Everything else is verifiable by unit tests plus, where noted, observing the next scheduled run's output in `logs/daily-refresh.log` and `runs/<ts>/`.
+5. **Docs travel with code** (AGENTS.md): each WP lists the README/prompt sections it makes stale; update them in the same commit. WP13 covers only *pre-existing* drift.
+6. §7 lists things deliberately **out of scope** — do not fix or improve them in passing, even where the code invites it.
 
 ---
 
 ## 3. Owner decisions (final — treat as constraints)
 
 1. **Labradoodle sources:** labradoodles are categorically excluded (typically >10 kg; also fail the coat rule). Drop the *Australian Labradoodle Association rehoming* source; **keep DoodleAid** (it also carries qualifying small oodles).
-2. **Multi-dog URLs:** a URL is *not* a reliable per-dog identifier. When one page hosts several dogs (e.g. PAWS `FosterCareDogs.html`), **all** of them must be representable — the state key must be extended (WP7). Cross-*source* duplicates are a different matter — see 3.
-3. **Cross-listing duplicates accepted:** the same dog listed under two sources (own-site + PetRescue) may appear twice. No dedup logic. Document it.
-4. **No "code-delegation refactor":** it is not planned. Remove the stale README reference. The judge re-judging browser-shelter dogs every run is an accepted cost. Budget cap stays at $2.50/run — this also caps verification runs.
-5. **Browser-dog rechecks** go through the **browser-MCP subagent path**, not WebFetch (browser shelters are exactly the WebFetch-blocked ones). **Removal requires positive evidence** (dead per-dog URL, or explicit adopted/rehomed content); unreachability alone means retry next run.
+2. **Multi-dog URLs:** a URL is *not* a reliable per-dog identifier. When one page hosts several dogs (e.g. PAWS `FosterCareDogs.html`), **all** must be representable — extend the state key (WP7).
+3. **Cross-listing duplicates accepted:** the same dog listed under two sources (own-site + PetRescue) may appear twice in the index. No dedup logic anywhere. Document it.
+4. **No "code-delegation refactor":** not planned; remove the stale README reference. The judge re-judging browser-shelter dogs every run is an accepted cost. Budget cap stays at $2.50/run, verification runs included.
+5. **Browser-dog rechecks** go through the **browser-MCP subagent path**, not WebFetch (browser shelters are exactly the WebFetch-blocked ones — the 2026-07-05 log shows 8 of them returning 403/JS-blocked). **Removal requires positive evidence** (dead per-dog URL, or explicit adopted/rehomed content, or confirmed absence from the shelter's rendered list); unreachability alone means leave it and retry next run.
 6. **Source vs shelter split approved** (WP8): the index must show the real shelter, not "PetRescue NSW poodle search (aggregator)".
-7. **Prompt intent on state.json:** the judge must never *edit* `state.json`/`dog-index.md` itself; *invoking the deterministic pipeline* (which owns those files) is allowed. Reword the prompt to say exactly that (WP13).
+7. **Prompt intent on state.json:** the judge must never *edit* `state.json`/`dog-index.md` itself; *invoking the deterministic pipeline* (which owns those files) is allowed. Reword the prompt accordingly (WP13).
 8. **Judge permissions:** replace `--dangerously-skip-permissions` with an explicit allowlist (WP9).
-9. **Coordination:** sequence between daily runs (no launchctl changes); commit to main.
-10. **CI is dropped** (do not add GitHub Actions). **`flag_disappeared` removal is in scope** (WP12).
+9. **Coordination:** sequence between daily runs; commit to main.
+10. **CI is dropped** (no GitHub Actions). **`flag_disappeared` removal is in scope** (WP12).
 
-Accepted defaults (owner saw these; encode as-is): browser-dog staleness threshold **N = 3 days**; HTTP mapping for rechecks: **404/410 → flag, 403/5xx/timeout → transient (no flag)**; lock contention → **skip the run** with a log line; run-artifact retention **30 days**; index displays the real **shelter** (discovering source stays in state only).
+Accepted defaults — encode as-is, see also §5: staleness threshold N = 3 days; 404/410 flag vs 403/5xx/timeout transient; lock contention skips the run; 30-day run-artifact retention; index displays real shelter with source kept in state.
 
 ---
 
 ## 4. Work packages
 
-Order: WP1–WP6 are independent (any order). WP7 before WP8 (both touch state shape). WP12 after WP2+WP3. WP9 any time, but its paid verification run last in its day. WP13 last.
-
 ### WP1 — Confirmed rechecks must count as "seen"
-- **Problem:** `_recheck_qualified_details` ([pipeline.py:216-240](src/pipeline.py)) confirms a dog live daily but never bumps `last_seen`; only list cards do ([store.py:117](src/store.py)). A long-on-hold dog delisted from list renders is pruned at 90 days *despite daily confirmations* and silently vanishes from the index.
-- **Change:** on the confirmed path (status parsed, not adopted), set `entry["last_seen"]` to the run timestamp (pass `ts` into the function).
-- **Accept:** unit test — confirmed entry's `last_seen` == run ts; flagged/unreachable entries' `last_seen` unchanged. Suite green.
+- **Problem:** `_recheck_qualified_details` ([pipeline.py:182-240](src/pipeline.py)) confirms a dog live daily but never bumps `last_seen`; only list cards do, via `store.touch`. A long-on-hold dog delisted from list renders (PetRescue hides on-hold dogs from search results) is pruned at 90 days *despite daily confirmations* and silently vanishes from the index.
+- **Change:** add a `ts: str` parameter to `_recheck_qualified_details`; on the confirmed path (detail parsed, status != adopted) set `entry["last_seen"] = ts`. Update the call site in `collect` (it has `ts` in scope) and the existing tests in `tests/test_pipeline.py` (`RecheckQualifiedDetailsTest` and `CollectRecheckIntegrationTest` call the old signature).
+- **Tests:** confirmed entry's `last_seen` == run ts; flagged (404/adopted) entries' `last_seen` unchanged.
+- **Commit summary:** `Claude: count a confirmed detail recheck as a sighting (WP1)`
 
-### WP2 — `FetchError` carries HTTP status; recheck records a reason
-- **Problem:** [fetch.py](src/fetch.py) collapses 404 / 403 / timeout into one string. Permanent 4xx get a pointless retry; `_recheck_qualified_details` flags `maybe_adopted` on *any* failure (mass false flags on an outage day); the judge is told nothing about *why* a dog was flagged and re-fetches to rediscover it.
-- **Change:**
-  - `FetchError` gains `status: int | None` (from `urllib.error.HTTPError.code`). No retry when `400 <= status < 500`.
-  - `_recheck_qualified_details`: 404/410 → flag with `entry["recheck_reason"] = "http_gone"`; explicit adopted status → `"status_adopted"`; 403/5xx/timeout/transport → do **not** flag (per-dog analogue of the shelter-outage philosophy), log it.
-  - `flag_disappeared` sets `recheck_reason = "vanished_from_list"`. `apply_verdicts` clears the reason with the flag. Reason rides along into `pending.json` automatically (entries are serialized whole).
-  - Prompt (`prompts/daily-refresh.md` step 4): tell the judge it may trust `recheck_reason == "http_gone"` as strong evidence (confirm with one fetch, don't investigate from scratch).
-- **Accept:** unit tests for the status mapping (no-retry on 404, retry on 5xx/URLError, flag vs no-flag per status, reasons recorded). Suite green.
+### WP2 — `FetchError` carries HTTP status; rechecks record a reason
+- **Problem:** [fetch.py](src/fetch.py) collapses 404 / 403 / timeout into one string. Permanent 4xx get a pointless retry; `_recheck_qualified_details` flags `maybe_adopted` on *any* failure (mass false flags on an outage day); the judge is told nothing about *why* a dog was flagged and re-investigates from scratch.
+- **Change, fetch side:** give `FetchError` an optional `status: int | None` attribute (custom `__init__(message, status=None)`). In `fetch()`, catch `urllib.error.HTTPError` **before** `URLError` (it's a subclass — catch order matters), record `error.code`, and skip the retry loop when `400 <= code < 500`. Keep the existing exception tuple for the transport cases.
+- **Change, pipeline side:** in `_recheck_qualified_details`, branch on the caught error:
+  - `FetchError` with status 404/410 → flag, `entry["recheck_reason"] = "http_gone"`.
+  - `ParseError` (detail page no longer matches the template — often what an adopted-page rewrite looks like) → flag, reason `"detail_unparseable"` (preserves current behavior, now labeled).
+  - `FetchError` with any other/no status (403, 5xx, timeout, DNS) → **do not flag**; log at INFO and leave the entry untouched (per-dog analogue of the shelter-outage rule).
+  - Parsed page with `status == "adopted"` → flag, reason `"status_adopted"`.
+  - `flag_disappeared` sets reason `"vanished_from_list"` (dies with WP12 — fine either way).
+  - `apply_verdicts` clears `recheck_reason` wherever it clears `recheck`. The reason reaches `pending.json` automatically (entries serialize whole). New-entry template in `_entry_from_listing` gains `"recheck_reason": None`.
+- **Prompt:** step 4 of `prompts/daily-refresh.md`: the judge may treat `recheck_reason: "http_gone"` as strong evidence — one confirming fetch, not a full investigation.
+- **Tests:** no-retry on 404 (assert single attempt via a counting side_effect); retry preserved on URLError; each reason recorded; 403/timeout does not flag and does not clear an existing flag.
+- **Commit summary:** `Claude: carry HTTP status on FetchError and record recheck reasons (WP2)`
 
 ### WP3 — Staleness detection for browser-sourced dogs *(after WP2)*
-- **Problem:** `flag_disappeared` excludes `source_kind == "browser"` ([store.py:150](src/store.py)) and the detail recheck skips them (no parser) — nothing ever questions a browser-found qualified dog. Evidence (2026-07-05): two of eight index entries were 23 and 35 days stale, shown "available". Their only exit is the 90-day prune — a silent, unconfirmed drop.
-- **Change:**
-  - In `collect`, flag qualified, non-removed `browser` entries whose `last_seen` is older than **3 days** with `recheck = "maybe_adopted"`, `recheck_reason = "stale_browser"`.
-  - Prompt step 4: for `stale_browser` entries, verify via the **browser-MCP subagent path** (WebFetch is expected to fail on these sites — a WebFetch failure is NOT evidence). Emit `removed: true` **only on positive evidence** (per-dog page dead, or page shows adopted/rehomed/absent from its shelter's rendered list). Otherwise emit the dog as still qualified (which bumps `last_seen` via `apply_verdicts`) — inconclusive means leave it and retry next run.
-- **Note:** present browser dogs get `last_seen` bumped because the judge re-emits verdicts for re-scraped browser shelters each run (accepted behavior, §3.4) — N=3 tolerates a couple of missed/failed browser passes without false flags.
-- **Accept:** unit test for the flagging predicate (age, source_kind, qualified, not already flagged). Prompt change reviewed against §3.5. Suite green.
+- **Problem:** `flag_disappeared` excludes `source_kind == "browser"` ([store.py:150](src/store.py)) and the detail recheck skips them (no registered parser) — nothing ever questions a browser-found qualified dog. Evidence (2026-07-05): two of eight index entries were 23 and 35 days stale, both shown "available". Their only exit was the 90-day prune — a silent, unconfirmed drop.
+- **Change:** new function in `store.py` (keep it separate from `flag_disappeared` so WP12's removal is clean):
+  `flag_stale_browser(state, cutoff) -> list[dict]` — flags qualified, non-removed, `source_kind == "browser"` entries with no current `recheck` whose `last_seen < cutoff`, setting `recheck = "maybe_adopted"`, `recheck_reason = "stale_browser"`. In `collect`, compute the cutoff exactly as `prune` does (`datetime.now() - timedelta(days=3)`, same string format) and call it alongside the other flagging; include the count in the log line and `n_maybe_adopted`.
+- **Prompt:** step 4: entries with `recheck_reason: "stale_browser"` belong to JS/blocked sites — verify via the **browser-MCP subagent path**, not WebFetch (a WebFetch failure is NOT evidence). Emit `removed: true` only on positive evidence (§3.5). Otherwise re-emit the dog as qualified — that bumps `last_seen` through `apply_verdicts` and unflags it. Inconclusive → leave it; it retries next run.
+- **Why N=3 is safe:** present browser dogs get `last_seen` bumped every run the browser pass re-emits them (accepted behavior, §3.4), so 3 days tolerates a couple of failed browser passes without false flags, while capping staleness at days instead of months.
+- **Tests:** flagging predicate over age/source_kind/verdict/removed/existing-flag combinations; cutoff arithmetic.
+- **Commit summary:** `Claude: flag stale browser-sourced dogs for recheck (WP3)`
 
 ### WP4 — Stop counting `EMPTY_OK` as an error
-- **Problem:** `collect`'s `n_errors` includes `EMPTY_OK` ([pipeline.py:311](src/pipeline.py)); ~6 legitimately-empty shelters read as "6 source error(s)" daily, eroding the fail-loud signal.
-- **Change:** `n_errors` = PARSE_ERROR + FETCH_ERROR only; add `n_empty` and print it separately in `main()`'s summary line.
-- **Accept:** unit test on the stats dict. Suite green.
+- **Problem:** `collect`'s `n_errors` includes `EMPTY_OK` ([pipeline.py:311](src/pipeline.py)); ~6 legitimately-empty shelters read as "6 source error(s)" every day, training humans to ignore the one signal that matters.
+- **Change:** `n_errors` = `PARSE_ERROR` + `FETCH_ERROR` only; add `n_empty`; extend `main()`'s collect summary line (`… X empty, Y source error(s)`).
+- **Tests:** stats dict assertions over a mixed manifest.
+- **Commit summary:** `Claude: report empty sources separately from source errors (WP4)`
 
-### WP5 — Launcher hardening (`scripts/daily-refresh.sh`)
+### WP5 — Launcher hardening (`scripts/daily-refresh.sh` + one help string)
 - **Changes (one commit):**
-  - Overlap lock: `mkdir`-based lock (zsh-safe, atomic) around the whole body; on contention, log and **exit** (skip the run). Remove the lock dir on exit via trap.
-  - `git commit -m "…" -- "$INDEX" "$STATE"` so a user's staged files are never swept in.
-  - Line 164: `python3` → `/usr/bin/python3`.
-  - `index-check` subparser help in [pipeline.py:448](src/pipeline.py): "…if a dog was **added or dropped** since HEAD…".
-- **Accept:** shellcheck-clean-ish (no new warnings); manual double-invocation test shows the second exits immediately; suite green (help-text change).
+  - **Overlap lock:** `mkdir "$DIR/.run.lock"` (atomic; zsh-safe) at the top; on failure, if the lock dir's mtime is older than 4 hours (`stat -f %m`, macOS syntax) treat it as stale from a crash — remove and retake; otherwise log `"another run holds the lock; skipping"` and exit 0. Release with `trap 'rmdir "$DIR/.run.lock" 2>/dev/null' EXIT`.
+  - **Scoped commit:** `git commit -m "…" -- "$INDEX" "$STATE"` so files a human left staged are never swept into an automated commit.
+  - Line 164: bare `python3` → `/usr/bin/python3` (only inconsistency in the file).
+  - [pipeline.py:448](src/pipeline.py) `index-check` help: "…if a dog was **added or dropped** since HEAD…".
+- **Verify:** run the script twice concurrently against the sandbox pattern is impractical (it invokes the judge) — instead test the lock logic by extracting it verbatim into a throwaway script, or start `daily-refresh.sh`, immediately invoke it again, confirm the second exits on the lock, then kill the first and confirm the trap released the lock. Suite green (help text).
+- **Commit summary:** `Claude: add a run lock and scope the automated commit (WP5)`
 
 ### WP6 — Drop the Australian Labradoodle Association source
-- **Change:** remove that one entry from `config/shelters.json`. Keep DoodleAid. Add a line to README *Assumptions*: breed-specific sources whose breed is categorically disqualified (labradoodle: >10 kg typical + shedding parent) are not monitored.
-- **Check:** confirm no state entries have that source as their `shelter` and `verdict: qualified` (none expected — it was browser-path; any strays age out via prune, same as the documented doggierescue case).
-- **Accept:** JSON valid; collect dry-run (`python3 -m src.pipeline collect … --out /tmp/…` style, or just the JSON load) passes.
+- **Change:** remove that entry from `config/shelters.json` (it's the `australianlabradoodleassoc.org.au` one). Keep DoodleAid. README *Assumptions* gains one line: breed-specific sources whose breed is categorically disqualified (labradoodle: >10 kg typical + shedding parent) are not monitored.
+- **Check:** `python3 -c "import json; json.load(open('config/shelters.json'))"`; then confirm no qualified live state entry names it as shelter: none expected (it was browser-path; strays age out via prune, same as the documented doggierescue case).
+- **Commit summary:** `Claude: drop the Labradoodle Association source (WP6)`
+
+### WP12 — Remove `flag_disappeared` *(after WP2 + WP3; before WP8 recommended)*
+- **Rationale (owner-approved):** since 137cc35, every qualified non-browser dog is detail-rechecked directly each run and both failure modes (gone, adopted) are caught there; WP3 covers browser dogs. `flag_disappeared`'s only residual value is parsers lacking `parse_detail` — none exist, and this WP makes that a requirement.
+- **Change:**
+  - Delete `store.flag_disappeared` and its tests; in `collect`, remove the call plus the now-unused bookkeeping: the `present` set threaded through `_collect_source`, the `fetched_shelters` computation, and the `detail_confirmed` half of the recheck return value (`_recheck_qualified_details` then only returns `flagged` — simplify its signature and docstring).
+  - Add a registry test asserting **every module in `registry._REGISTRY` exposes `parse_detail`** — this is now a hard requirement for vanish detection; state it in [base.py](src/parsers/base.py)'s module docstring ("parsers MUST define parse_detail") and in README *Architecture*.
+  - Keep/extend a regression test proving the recheck path flags a dog that vanished from its list **and** whose detail URL died (the exact case `flag_disappeared` existed for).
+- **Commit summary:** `Claude: fold vanish detection into the detail recheck (WP12)`
 
 ### WP7 — Per-dog identity on shared-URL pages
-- **Problem:** state is keyed by `canonical(url)` and [dedup.canonical()](src/dedup.py) strips fragments, so one URL = at most one dog. PAWS lists many dogs on one page (`…/FosterCareDogs.html`); the current entry ("Bindi") occupies the slot and the next PAWS dog the judge emits would silently overwrite her — a lost dog, the exact failure the project exists to avoid.
-- **Change (owner decision §3.2):**
-  - `canonical()` **preserves the fragment**. Backwards-compatible: no existing state key carries one, and PetRescue card hrefs (`/listings/\d+`) never do.
-  - Prompt step 2: when a shelter page lists multiple dogs under one URL, subagents/judge must emit each dog's `url` as `<page-url>#<stable-slug>` (lowercase dog name, hyphenated); the slug must be reproducible run-to-run. Two same-named dogs on one page is accepted as unresolvable.
-  - Migration: rekey the existing PAWS entry (`…FosterCareDogs.html` → `…FosterCareDogs.html#bindi`, both key and `url` field) via a one-off `python3 - <<…` against state, committed with the code change. The index URL gains a harmless fragment; the membership "change" will trigger one automated commit — fine.
-  - README *Assumptions*: rewrite "a listing URL is a stable, unique identity" to reflect the new rule (URL+fragment for shared pages; cross-source duplicates accepted per §3.3).
-- **Accept:** unit tests — `canonical` keeps fragments, drops nothing else new; two fragment-distinct dogs coexist through `apply_verdicts`. Suite green.
-
-### WP8 — Split `source` vs `shelter` *(after WP7)*
-- **Problem:** `card.shelter = card.shelter or name` ([pipeline.py:164](src/pipeline.py)) stores the *config source name* as the dog's shelter; 4 of 8 index entries read "Shelter: PetRescue NSW poodle search (aggregator)" — misleading in the one artifact a human trusts.
+- **Problem:** state is keyed by `canonical(url)` and [dedup.canonical()](src/dedup.py) strips fragments, so one URL = at most one dog. PAWS lists many dogs on one page; the current entry ("Bindi", key `https://www.paws.com.au/FosterCare/FosterCareDogs.html`) occupies the slot, and the next PAWS dog the judge emits would silently overwrite her via `apply_verdicts` — a lost dog, the failure this project exists to prevent.
 - **Change:**
-  - New entry field `source` = config source name (what found it). `shelter` = the actual organization.
-  - PetRescue `parse_detail` extracts the rescue-group name — the detail page links to `/groups/<id>/<Name-Slug>` (confirmed present in `tests/fixtures/petrescue_detail.html`: `groups/10748/RSPCA-Illawarra-Shelter`); prefer the anchor's text if it parses cleanly, else un-slug the URL tail. `ParseError` is NOT warranted if absent — leave `shelter` None (index falls back to `source`).
-  - Wollongong parser: `shelter = "Wollongong Pet Connection"` (single-org site). Browser dogs: subagents already return a `shelter` field; `source` comes from the config name at merge.
-  - Migration: for all existing entries, set `source` from the current `shelter` value; null out `shelter` where it matches a *config source name that isn't a real org* (the aggregator searches). Qualified dogs will self-heal on the next daily detail recheck (which re-parses details); everything else may keep `shelter = None` harmlessly.
-  - `render_block`: show `shelter`, falling back to `source` when unset. `_recheck_qualified_details` and `upsert_listing` refresh `shelter` when the parser now supplies it.
-  - `flag_disappeared` scoping uses `source` (that's what `fetched_shelters` contains) — if WP12 already removed it, skip this.
-  - Docs: README *Architecture* note on the source/shelter distinction.
-- **Accept:** fixture test extracts the group name from `petrescue_detail.html`; render test shows real shelter; migration idempotent (safe to re-run). Suite green. After the next daily run, spot-check the index: aggregator-found dogs show a real shelter.
+  - `canonical()` **preserves the fragment**: pass `parts.fragment` through `urlunsplit` instead of `""`. Backwards-compatible with all existing keys (none carries a fragment; PetRescue card hrefs are `/listings/\d+`). **The existing test asserts the old behavior — update `tests/test_dedup.py::test_trailing_slash_and_fragment_removed`** (rename it; fragment is now kept, docstring accordingly).
+  - Prompt step 2 (browser instructions): when a shelter page lists multiple dogs under one URL, emit each dog's `url` as `<page-url>#<slug>` where slug = dog's name lowercased, non-alphanumeric runs collapsed to single hyphens (e.g. `#bindi`); the slug must be reproducible run-to-run so re-scrapes merge. Two identically-named dogs on one page is accepted as unresolvable.
+  - Prompt step 4 note: a `#fragment` URL can't be fetched more precisely than its page — verifying such a dog means checking the page still shows that dog.
+  - **Migration** (same commit, then delete the throwaway): rekey the PAWS entry —
+    ```
+    /usr/bin/python3 - <<'EOF'
+    import json
+    p = 'data/state.json'
+    s = json.load(open(p))
+    old = 'https://www.paws.com.au/FosterCare/FosterCareDogs.html'
+    e = s['listings'].pop(old, None)
+    if e:
+        e['url'] = old + '#bindi'
+        s['listings'][old + '#bindi'] = e
+        json.dump(s, open(p, 'w'), indent=2, ensure_ascii=False, sort_keys=True)
+        print('migrated')
+    else:
+        print('entry absent — verify state before proceeding')
+    EOF
+    ```
+    Run it between daily runs; the changed URL will register as a drop+add at the next daily run and trigger one automated commit — expected and fine. (Committing the migrated `state.json` in this WP's commit is acceptable as the documented exception to ground rule 1 — say so in the commit paragraph.)
+  - README *Assumptions*: rewrite "a listing URL is a stable, unique identity" — per-dog URLs where the site provides them; `url#name-slug` for shared pages; cross-source duplicates accepted (§3.3).
+- **Tests:** `canonical` keeps fragments and still lowercases host / strips trailing slash; two fragment-distinct dogs on one page coexist through `apply_verdicts` (create both, assert two entries).
+- **Commit summary:** `Claude: key shared-page dogs by URL fragment (WP7)`
+
+### WP8 — Split `source` vs `shelter` *(after WP7; simpler after WP12)*
+- **Problem:** `card.shelter = card.shelter or name` ([pipeline.py:164](src/pipeline.py)) stores the *config source name* as the dog's shelter — 4 of 8 index entries read "Shelter: PetRescue NSW poodle search (aggregator)", misleading in the one artifact a human trusts.
+- **Change:**
+  - **State:** new field `source` (the config source name — what *found* the dog); `shelter` becomes the actual organization or `None`. Thread it as a parameter: `upsert_listing(state, card, ts, source_kind, source)`; `_entry_from_listing` records both. Stop overwriting `card.shelter` with the source name in `_collect_source`; pass `name` as `source` instead. Browser dogs: subagents already return a real `shelter`; `apply_verdicts` stores `source_kind` today — have it also accept an optional `source` field from the verdict, defaulting to `None`.
+  - **PetRescue parser:** `parse_detail` extracts the rescue group. The detail page links to `/groups/<id>/<Name-Slug>` (confirmed in `tests/fixtures/petrescue_detail.html`: `groups/10748/RSPCA-Illawarra-Shelter`). Prefer the anchor's inner text (`strip_tags`, `clean`); if empty, un-slug the URL tail (`-` → space). Absent group link → leave `listing.shelter` None; this is **not** a `ParseError`.
+  - **Wollongong parser:** `parse_detail` sets `listing.shelter = "Wollongong Pet Connection"` (single-org site).
+  - **Recheck refreshes shelter:** in `_recheck_qualified_details`, after a successful parse, copy `listing.shelter` into the entry when the parser supplied one — this is what backfills existing qualified dogs automatically on the next daily run.
+  - **Render:** `render_block` shows `entry["shelter"] or entry["source"] or "unknown"`.
+  - **Migration** (same commit; idempotent): for every entry, if `"source"` not present: `entry["source"] = entry.get("shelter")`; then set `entry["shelter"] = None` where its value is one of the aggregator source names (the eight `PetRescue NSW … search (aggregator)` names — read them from `config/shelters.json` rather than hard-coding). Non-aggregator names (real shelters/groups) stay in both fields — harmless and mostly correct.
+  - **Docs:** README *Architecture* — one paragraph on the source/shelter distinction and the accepted consequence that cross-source duplicates are visible as two entries (§3.3).
+- **Tests:** fixture test — group name extracted from `petrescue_detail.html`; render fallback chain; migration idempotence (run twice over a fixture state, same result); recheck copies a newly-parsed shelter into the entry.
+- **Verify:** after the next scheduled run, aggregator-found qualified dogs in `data/dog-index.md` show a real shelter (the recheck backfill).
+- **Commit summary:** `Claude: record discovering source separately from the shelter (WP8)`
+
+### WP10 — Sanitize rendered content; validate verdict input
+- **Problem:** `render_block` interpolates scraped/LLM text into Markdown verbatim (an HTML leak already shipped once — f723508); `apply_verdicts` accepts arbitrary fields for unknown URLs; the index auto-pushes to GitHub.
+- **Change:**
+  - [render.py](src/render.py): a `_sanitize(text)` applied to every interpolated field (fold into `_value`): strip HTML tags (reuse `base._TAG_RE`-style regex), escape `[` and `]` (`\[`, `\]`), collapse whitespace. URLs are handled by validation below, not escaping.
+  - [store.py](src/store.py) `apply_verdicts`: ignore a verdict whose `url` doesn't start with `http://`/`https://` or contains whitespace/`<`/`>` (log a warning); cap every stored string field at **200 chars** (truncate; summaries are ≤25 words by contract anyway). Optionally default missing `verdict` to `"pending"` on newly-created entries so they can't become invisible orphans (see Appendix A).
+- **Tests:** a name like `](http://evil) <script>x</script>` renders inert; over-long summary truncated; junk-URL verdict ignored; legitimate fields (locations with parentheses, fees with `$`) render unchanged.
+- **Note:** re-rendering the existing index must produce no diffs beyond genuinely dirty data — eyeball `git diff data/dog-index.md` after a sandbox `apply` (§2.3 pattern, verdicts can be an empty `[]` file) before committing.
+- **Commit summary:** `Claude: sanitize rendered fields and validate verdict input (WP10)`
+
+### WP11 — Run/log retention
+- **Change:** in the launcher, after the run completes:
+  - `find "$RUNS" -maxdepth 1 -type d -name '[0-9]*-[0-9]*' -mtime +30 -exec rm -rf {} +` — guarded by `[ -d "$RUNS" ]`; the name pattern plus `-maxdepth 1` keeps it scoped even if `$RUNS` were empty/misset. Match the `YYYYMMDD-HHMMSS` shape.
+  - Delete the legacy flat `runs/run-2026*` files once, by hand, in this commit's session (they predate the per-run directory layout).
+  - Optional: skip log truncation — logs are 424 KB after six weeks; revisit only if they become a problem (don't gold-plate).
+- **Docs:** README *Key design decisions*: one line stating both retention windows (90 d state, 30 d run artifacts).
+- **Verify:** dry-run the `find` with `-print` instead of `-exec rm` first and eyeball the list; after the next scheduled run, confirm old dirs are gone and the newest survived.
+- **Commit summary:** `Claude: prune run artifacts older than 30 days (WP11)`
 
 ### WP9 — Judge permission allowlist (replaces `--dangerously-skip-permissions`)
 - **Problem:** the judge reads arbitrary scraped web content with unrestricted local authority — prompt injection has file, shell, and git reach. The design needs only a narrow tool set.
-- **Confirmed tool usage** (from `runs/20260705-130000/run.stream.jsonl`, main thread): `Agent`, `Read`, `ToolSearch`, `WebFetch`, `Write` — notably **no Bash**. Subagents additionally use browser-MCP tools; enumerate them from a stream that had a browser pass before finalizing (check an `Agent`-spawning run's subagent events, or capture one via the verification run).
-- **Change:** in `scripts/daily-refresh.sh`, drop `--dangerously-skip-permissions`; allow: `Read`, `WebFetch`, `Agent`/`Task`, `ToolSearch`, the browser-MCP tools the subagents need, and `Write` scoped to the run directory (`$RUNDIR`) — via `--allowedTools` patterns or a checked-in settings file (executor picks the mechanism the installed CLI version supports; prefer a tracked settings file for auditability). No Bash: in scheduled runs the artifacts always exist, so the prompt's "run collect yourself" escape hatch applies only to interactive use under normal interactive permissions — note that in the prompt (coordinates with WP13's rewording).
-- **Verify (paid, §6):** one manual `scripts/daily-refresh.sh` run. Pass = `verdicts.json` written and non-empty, report step-6 output present, **zero permission-denied events** in the stream, browser subagents produced results for at least one `NEEDS_BROWSER` shelter. On failure, revert the script change (single commit) and record the denied tool in the commit message for the next attempt.
-- **Docs:** README *Key design decisions* — replace any skip-permissions mention; document the allowlist and why.
+- **Known facts:** the main thread of run `20260705-130000` used exactly `Agent`, `Read`, `ToolSearch`, `WebFetch`, `Write` — **no Bash**. Subagent (Haiku) tool calls do **not** appear in the parent stream, so the browser-MCP tool names must be discovered iteratively: expect Playwright-MCP and/or Claude-in-Chrome tool patterns (`mcp__playwright__*` / `mcp__claude-in-chrome__*`), and refine from denials.
+- **Change:** in `scripts/daily-refresh.sh`, drop `--dangerously-skip-permissions`; grant via `--allowedTools` (or a **tracked** `.claude/settings.json` — prefer the settings file for auditability; check `claude --help` of the installed version for exact syntax): `Read`, `WebFetch`, `Agent`/`Task`, `ToolSearch`, `Write` scoped to the runs directory (pattern-scoped permission, e.g. `Write(runs/**)`), and the browser-MCP tool patterns. **No Bash**: scheduled runs always have their artifacts (the launcher runs collect first); the prompt's "generate them yourself" escape hatch is interactive-only and runs under interactive permissions — add that qualifier to the prompt in this commit (coordinates with WP13's rewording; whichever lands second reconciles).
+- **Verify (paid, §6):** one manual launcher run. Pass = non-empty `verdicts.json`; report present; **zero permission-denied events** in `run.stream.jsonl` (grep for `permission`/`denied`); at least one `NEEDS_BROWSER` shelter produced browser results. On failure: revert the script/settings commit immediately (single commit — clean revert), record the denied tool names in the revert commit's paragraph, and retry another day with the amended list. Budget each attempt ≤ $2.50; expect 1–3 attempts.
+- **Docs:** README *Key design decisions* — replace the implicit skip-permissions posture with the allowlist and its rationale.
+- **Commit summary:** `Claude: run the judge under a tool allowlist (WP9)`
 
-### WP10 — Sanitize rendered content; cap verdict fields
-- **Problem:** `render_block` interpolates scraped/LLM text into Markdown verbatim (an HTML leak already shipped once — f723508); `apply_verdicts` accepts arbitrary fields for unknown URLs; the index auto-pushes to GitHub.
-- **Change:** in [render.py](src/render.py), escape/strip Markdown-significant sequences and raw HTML tags in every interpolated field (a small `_sanitize()` on `_value`'s output path); in `apply_verdicts`, length-cap fields (name/breed/summary etc., e.g. 200 chars) and ignore unknown keys (already implicit — keep it that way).
-- **Accept:** unit tests — a name like `](http://evil) <script>` renders inert; over-long summary truncated. Existing index re-renders without visible diffs beyond genuinely dirty data. Suite green.
-
-### WP11 — Run/log retention
-- **Change:** launcher deletes `runs/<ts>` directories older than **30 days** (guard the glob so a bad `RUNS` var can't rm elsewhere; only match the `[0-9]{8}-[0-9]{6}` dir shape). Delete the legacy flat `runs/run-2026*` files once, in this commit. Optional: cap `logs/*.log` at a few MB by truncating the head.
-- **Docs:** README gains one line under *Key design decisions* (retention windows: 90d state, 30d run artifacts).
-- **Accept:** dry-run the find/delete expression against the live `runs/` listing before enabling; next scheduled run logs the sweep.
-
-### WP12 — Remove `flag_disappeared` *(after WP2 + WP3)*
-- **Rationale (owner-approved):** since the per-dog detail recheck (137cc35), every qualified non-browser dog is re-fetched directly each run and both failure modes (gone, adopted) are caught there; WP3 covers browser dogs. `flag_disappeared`'s only residual value is parsers lacking `parse_detail` — none exist.
-- **Change:** delete `flag_disappeared` and its call site/tests; add a test asserting **every registered parser module exposes `parse_detail`** (this becomes a hard requirement — state it in [base.py](src/parsers/base.py)'s module docstring and README). Add/keep a regression test proving the recheck path flags a vanished-and-404 dog (the case `flag_disappeared` used to catch). The `present` set bookkeeping in `collect` simplifies accordingly.
-- **Accept:** suite green; a grep shows no dangling references; README *Architecture* updated in the same commit.
-
-### WP13 — Residual documentation fixes (one commit)
-Pre-existing drift not owned by the WPs above:
-- README: add a **Test** section (`/usr/bin/python3 -m unittest discover -s tests`; note it must pass on stock 3.9.6). Remove the "code-delegation refactor" sentence (§3.4). Document: cross-listing duplicates accepted; unknown species counts as dog; aggregator searches are NSW-only (`state_id=1`) so ACT coverage rests on the three ACT sources; a missing `state.json` rebuilds silently from empty; dropped sources should clean up their state entries (doggierescue precedent, 9faef8d).
-- `data/dog-index.md` (human region, outside the markers): fix the "Monitored shelters" link — it points at `shelters.json` relative to `data/` (broken); correct to `../config/shelters.json`. "cron job" → launchd.
-- `prompts/daily-refresh.md`: reword the state.json constraint per §3.7 — e.g. "Never edit `data/state.json` or `data/dog-index.md` yourself; if this run's artifacts are missing (interactive use only), generate them by running the pipeline — the pipeline, not you, writes state."
-- `scripts/daily-refresh.sh`: remove the undefined "Phase 2" numbering from comments.
-- `src/parse_usage.py`: Google-style docstring for `main()`.
+### WP13 — Residual documentation fixes (one commit, last)
+Pre-existing drift not owned by the WPs above — skip anything a prior WP already fixed:
+- **README:** add a **Test** section (`/usr/bin/python3 -m unittest discover -s tests`; must pass on stock 3.9.6). Remove the "code-delegation refactor" clause from *Key design decisions* (§3.4). Add to *Assumptions*: cross-listing duplicates accepted; unknown species counts as a dog (`base.is_dog`); aggregator searches are NSW-only (`state_id=1`) so ACT coverage rests on the three ACT sources; a missing `state.json` silently rebuilds from empty; dropped sources should clean up their state entries (doggierescue precedent, 9faef8d).
+- **`data/dog-index.md`** (human region, outside the markers — edit directly): the "Monitored shelters" link points at `shelters.json` (broken; resolves inside `data/`) — fix to `../config/shelters.json`; "cron job" → launchd agent.
+- **`prompts/daily-refresh.md`:** reword the state constraint per §3.7 — e.g. "Never edit `data/state.json` or `data/dog-index.md` yourself; if this run's artifacts are missing (interactive use only), generate them by running the pipeline — the pipeline, not you, writes state."
+- **`scripts/daily-refresh.sh`:** remove the undefined "Phase 2" numbering from comments.
+- **`src/parse_usage.py`:** Google-style docstring for `main()`.
+- **Commit summary:** `Claude: fix accumulated documentation drift (WP13)`
 
 ---
 
@@ -143,44 +239,50 @@ Pre-existing drift not owned by the WPs above:
 | Knob | Value |
 |---|---|
 | Browser-dog staleness threshold (WP3) | 3 days |
-| Recheck HTTP mapping (WP2) | 404/410 → flag; 403/5xx/timeout → transient, no flag |
-| Lock contention (WP5) | skip run, log line |
+| Recheck HTTP mapping (WP2) | 404/410 → flag `http_gone`; adopted status → `status_adopted`; unparseable detail → `detail_unparseable`; 403/5xx/timeout/DNS → transient, no flag |
+| `recheck_reason` values | `http_gone`, `status_adopted`, `detail_unparseable`, `vanished_from_list` (dies with WP12), `stale_browser` |
+| Lock contention (WP5) | skip run, log line; stale lock auto-broken after 4 h |
 | Run-artifact retention (WP11) | 30 days |
 | State retention (existing) | 90 days — unchanged |
 | Judge budget, incl. verification runs | $2.50 (`--max-budget-usd 2.5`) — unchanged |
 | Field length cap (WP10) | 200 chars |
+| Fragment slug rule (WP7) | dog name, lowercased, non-alphanumeric runs → single `-` |
 
-## 6. Paid verification-run protocol
+## 6. Paid verification-run protocol (WP9 only)
 
-1. Run outside the 13:00 window; check no run is in progress (`ps` for `claude`/the script; after WP5, the lock enforces this).
-2. Invoke `scripts/daily-refresh.sh` directly. Cost cap is the built-in $2.50.
-3. Pass criteria: non-empty `runs/<ts>/verdicts.json`; report present; no permission-denied / auth / watchdog events in `run.stream.jsonl`; `logs/daily-refresh.log` shows a clean apply.
-4. A verification run is a *real* run — it may legitimately commit and push an "Automated run" commit. That's fine (owner accepts main auto-publish).
-5. If it fails, revert your change (the WPs are single commits) before the next 13:00 slot.
+1. Run well clear of the 13:00 window; confirm nothing is running (`pgrep -f daily-refresh.sh`; after WP5 the lock also enforces this).
+2. Invoke `scripts/daily-refresh.sh` directly from the repo root. Cost is bounded by the built-in $2.50 cap.
+3. Pass criteria: non-empty `runs/<ts>/verdicts.json`; `report.txt` present; no permission-denied / auth / watchdog lines in `run.stream.jsonl` or `logs/daily-refresh.log`; browser results for ≥1 `NEEDS_BROWSER` shelter; clean `apply`.
+4. A verification run is a *real* run — it may legitimately commit and push an "Automated run" commit. Accepted.
+5. On failure, revert your WP9 commit before the next 13:00 slot.
 
 ## 7. Out of scope — do not do
 
 - Cross-listing dedup (owner accepted duplicates), including any fuzzy matching.
 - Raising/lowering the $2.50 budget cap.
 - The "code-delegation refactor" / feeding known URLs to browser subagents to cut re-judging cost.
-- CI (explicitly dropped), lint configs, packaging (`pyproject.toml`), new dependencies.
-- robots.txt handling; changing scrape cadence/delays.
-- Rewriting state to another format; touching the `runs/`+`logs/` gitignore policy.
+- CI (explicitly dropped), lint configs, packaging (`pyproject.toml`), new dependencies, pytest.
+- robots.txt handling; changing scrape cadence, delays, or page caps.
+- Rewriting state to another format; changing the `runs/`+`logs/` gitignore policy.
 - Any change letting the LLM write files other than `verdicts.json`.
+- Decoupling the judge from Claude Code (engine adapters, etc.) — discussed with the owner and explicitly deferred.
 
 ---
 
-## Appendix A — Review findings not converted to work packages (context)
+## Appendix A — Known minor issues deliberately left (context, not tasks)
 
-- **Minor, unfixed (acceptable):** `_detect_status` matches any `>Adopted<` text node on a detail page (false-positive risk on template drift); `apply_verdicts` can create verdict-less orphan entries if the judge omits `verdict` (defensive defaulting would help — fold into WP10 if convenient); `canonical()` doesn't sort query params (unobserved in practice); partial-pagination failure leaves `status=OK` and relies on the detail recheck to prevent false flags (works, ordering-dependent — worth a comment if touching that code).
-- **Operational history that shaped the design:** 2026-06-14 hang → watchdog; 2026-06-22→07-04 expired-login outage (12 days silent) → no-verdicts notification; 2026-07-04 02:41 run aborted at $2.51 (`error_max_budget_usd`) — full spend, zero verdicts; cap stays regardless (§3.4).
-- **State hygiene:** 109 orphaned `source_kind: "doggierescue"` entries from the deliberate parser removal (9faef8d) age out via the 90-day prune; the lesson (clean up state when dropping a source) is documented via WP13.
+- `_detect_status` matches any `>Adopted<` / `>On hold<` text node anywhere on a detail page — false-positive risk on template drift; acceptable.
+- `apply_verdicts` can create verdict-less orphan entries if the judge omits `verdict` on a new URL (entry is then neither pending nor rendered). WP10's optional defaulting addresses it; otherwise accepted.
+- `canonical()` doesn't sort query params (two param orderings won't dedup) — unobserved in practice.
+- Partial-pagination failure (page 3 of N dies) leaves `status=OK`; dogs on unfetched pages are protected from false flagging only by the detail recheck running first. If WP12 touches nearby code, a comment there is welcome; no behavior change wanted.
+- 109 orphaned `source_kind: "doggierescue"` entries from the deliberate parser removal (9faef8d) age out via the 90-day prune; no action.
+- Operational history that shaped the design (don't undo): 2026-06-14 hang → watchdog; 2026-06-22→07-04 silent auth outage → no-verdicts notification; 2026-07-04 budget abort at $2.51 → cap stays anyway (§3.4).
 
 ## Appendix B — Verified healthy; don't re-litigate
 
 - Atomic state writes (`tempfile` + `os.replace`), sorted/indented JSON for stable diffs.
 - Fail-loud parser philosophy: `ParseError` on drift, `EMPTY_OK` distinct from `OK`, per-source manifest; registry host-matching rejects lookalike domains (`sydneypetrescue.com.au` ≠ `petrescue.com.au`).
-- Layered vanish detection with shelter-outage scoping and detail-page override (ff44827) — being simplified by WP12, not because it was broken.
+- Layered vanish detection with shelter-outage scoping and detail-page override (ff44827) — WP12 simplifies it because it became redundant, not because it was broken.
 - Membership-gated auto-commit verified against git history; watchdog + notification address both observed failure modes.
 - Tests: 59 green on the launcher's own interpreter; fixtures and regression coverage are good; docstring discipline holds (one gap → WP13).
 - `CLAUDE.md → AGENTS.md` symlink keeps a single source of truth.
