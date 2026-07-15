@@ -120,6 +120,10 @@ prose Markdown:
 - **State stays bounded by a 90-day sweep.** At each run's start, entries not seen on any shelter
   for 90 days are dropped from `state.json` (keyed on `last_seen`, so still-listed dogs never age
   out). A pruned dog that reappears is simply re-discovered as new.
+- **Breed-specific sources whose breed is categorically disqualified are not monitored.** A source
+  that only ever lists a breed the filter always excludes (labradoodles: typically >10 kg and a
+  shedding parent) earns no coverage; DoodleAid is kept because it also carries qualifying small
+  oodles.
 
 ## Deploy
 

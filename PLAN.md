@@ -15,7 +15,7 @@ Flip a row to `DONE` **in the same commit** that completes the work package, and
 | WP3 | Browser-dog staleness recheck | DONE |
 | WP4 | `EMPTY_OK` out of `n_errors` | DONE |
 | WP5 | Launcher hardening | TODO |
-| WP6 | Drop Labradoodle Association source | TODO |
+| WP6 | Drop Labradoodle Association source | DONE |
 | WP12 | Remove `flag_disappeared` | TODO |
 | WP7 | Per-dog identity on shared-URL pages | TODO |
 | WP8 | Split `source` vs `shelter` | TODO |
