@@ -195,16 +195,20 @@ def _recheck_qualified_details(state: dict, ts: str) -> tuple[set[str], list[dic
     more authoritative than its absence from a list render, so it can resolve a
     stale flag on its own rather than waiting on the LLM.
 
-    An unreachable detail page or one now marked "adopted" is flagged for the
-    LLM to confirm and prune — code detects the anomaly, the LLM confirms
+    A detail page that 404/410s ("http_gone"), one that no longer parses
+    ("detail_unparseable"), or one now marked "adopted" ("status_adopted") is
+    flagged ``maybe_adopted`` for the LLM to confirm and prune, with the reason
+    recorded in ``recheck_reason`` — code detects the anomaly, the LLM confirms
     removal, matching how ``flag_disappeared`` already handles a vanished
-    listing. Anything else confirms the dog is still up: its status is
-    refreshed, its ``last_seen`` is bumped to this run (a direct detail-page
-    confirmation is a sighting, so a long-on-hold dog dropped from its list
-    render isn't pruned despite being confirmed live daily), any recheck flag
-    is cleared, and its URL is reported back so the caller can count it as
-    present before running ``flag_disappeared`` (whose coarser "missing from the
-    list page" signal would otherwise re-flag it).
+    listing. A transient fetch failure (403/5xx/timeout/DNS) is NOT evidence the
+    dog is gone, so the entry is left untouched and retried next run. Anything
+    else confirms the dog is still up: its status is refreshed, its ``last_seen``
+    is bumped to this run (a direct detail-page confirmation is a sighting, so a
+    long-on-hold dog dropped from its list render isn't pruned despite being
+    confirmed live daily), any recheck flag/reason is cleared, and its URL is
+    reported back so the caller can count it as present before running
+    ``flag_disappeared`` (whose coarser "missing from the list page" signal would
+    otherwise re-flag it).
 
     Args:
         state: The state document (mutated in place).
@@ -227,22 +231,47 @@ def _recheck_qualified_details(state: dict, ts: str) -> tuple[set[str], list[dic
         try:
             detail = fetch(entry["url"])
             module.parse_detail(detail.body, listing)
-        except (FetchError, ParseError):
-            entry["recheck"] = "maybe_adopted"
-            flagged.append(entry)
+        except FetchError as error:
+            if error.status in (404, 410):
+                _flag(entry, "http_gone", flagged)
+            else:
+                # 403/5xx/timeout/DNS: a transient fetch gap, not evidence the
+                # dog is gone. Leave the entry untouched (an existing flag too)
+                # and retry next run — the per-dog analogue of the shelter-outage
+                # scoping in flag_disappeared.
+                logger.info("recheck: transient fetch failure for %s (%s); not flagging",
+                            entry["url"], error)
+            continue
+        except ParseError:
+            # The detail page no longer matches the listing template — often what
+            # an adopted-page rewrite looks like.
+            _flag(entry, "detail_unparseable", flagged)
             continue
         finally:
             time.sleep(DETAIL_FETCH_DELAY_S)
         if listing.status:
             entry["status"] = listing.status
         if listing.status == "adopted":
-            entry["recheck"] = "maybe_adopted"
-            flagged.append(entry)
+            _flag(entry, "status_adopted", flagged)
         else:
             entry["recheck"] = None
+            entry["recheck_reason"] = None
             entry["last_seen"] = ts
             confirmed.add(canonical(entry["url"]))
     return confirmed, flagged
+
+
+def _flag(entry: dict, reason: str, flagged: list[dict]) -> None:
+    """Flag an entry maybe_adopted with a reason and record it in ``flagged``.
+
+    Args:
+        entry: The state entry to flag (mutated in place).
+        reason: The ``recheck_reason`` label explaining why (e.g. "http_gone").
+        flagged: The running list of flagged entries this collects into.
+    """
+    entry["recheck"] = "maybe_adopted"
+    entry["recheck_reason"] = reason
+    flagged.append(entry)
 
 
 def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:

@@ -30,7 +30,7 @@ You are the daily-refresh judge for the Sydney-area small low-shedding, low-odou
    - **Geographic filter:** NSW + ACT only. Exclude listings clearly >4hrs from Sydney CBD (Coffs Harbour, Dubbo, far west NSW, Tamworth, Byron Bay, Tweed). Borderline (Port Macquarie, Kunama, Eurobodalla) → include with "verify drive time" tag.
    - For each qualifying dog, compose a `summary` (one sentence ≤25 words). The record already carries `breed`, `age`, `sex`, `size`, `location`, `shelter`, `fee`, and `status`; if `breed` looks ambiguous, WebFetch the listing `url` to confirm before judging.
 
-4. **Resolve the `maybe_adopted` re-checks.** For each pending entry with `"recheck": "maybe_adopted"`, WebFetch its `url`: if it 404s or shows the dog as adopted/rehomed, mark it removed; otherwise leave it as a qualified dog (no change needed).
+4. **Resolve the `maybe_adopted` re-checks.** For each pending entry with `"recheck": "maybe_adopted"`, WebFetch its `url`: if it 404s or shows the dog as adopted/rehomed, mark it removed; otherwise leave it as a qualified dog (no change needed). The entry's `recheck_reason` says why the pipeline flagged it and how much to trust it: `http_gone` (its detail URL returned 404/410 — strong evidence; one confirming fetch is enough, not a full investigation), `status_adopted` (its own page now reports adopted), `detail_unparseable` (the page no longer matches the listing template, often an adopted-page rewrite — verify), or `vanished_from_list` (merely absent from its shelter's list this run — the weakest signal; verify before removing).
 
 5. **Write `verdicts.json`** — a JSON array, one object per dog you judged, to the path the launcher gave you. Each object:
    - `url` (required) and `verdict`: `"qualified"` or `"rejected"`.

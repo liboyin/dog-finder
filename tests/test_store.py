@@ -64,6 +64,7 @@ class PendingAndDisappearTest(unittest.TestCase):
         flagged = store.flag_disappeared(state, present=set(), ts=TS2, fetched_shelters={"Shelter A"})
         self.assertEqual(len(flagged), 1)
         self.assertEqual(state["listings"]["https://x/listings/9"]["recheck"], "maybe_adopted")
+        self.assertEqual(state["listings"]["https://x/listings/9"]["recheck_reason"], "vanished_from_list")
 
     def test_disappeared_not_flagged_when_shelter_unfetched(self):
         """A dog whose shelter failed/wasn't scanned this run is not flagged."""
@@ -101,6 +102,9 @@ class ApplyVerdictsTest(unittest.TestCase):
         """Verdicts update existing entries and create browser-found ones."""
         state = store.empty_state()
         store.upsert_listing(state, _listing("https://x/listings/1"), TS1)
+        # A prior recheck flag+reason must be cleared once the LLM judges it.
+        state["listings"]["https://x/listings/1"]["recheck"] = "maybe_adopted"
+        state["listings"]["https://x/listings/1"]["recheck_reason"] = "http_gone"
         store.apply_verdicts(state, [
             {"url": "https://x/listings/1", "verdict": "qualified", "summary": "Good dog.", "tags": ["t"]},
             {"url": "https://site/fido", "verdict": "qualified", "name": "Fido", "breed": "Maltese", "source_kind": "browser"},
@@ -109,6 +113,7 @@ class ApplyVerdictsTest(unittest.TestCase):
         self.assertEqual(first["verdict"], store.QUALIFIED)
         self.assertEqual(first["summary"], "Good dog.")
         self.assertIsNone(first["recheck"])
+        self.assertIsNone(first["recheck_reason"])
         self.assertIn("https://site/fido", state["listings"])
         self.assertEqual(state["listings"]["https://site/fido"]["name"], "Fido")
 

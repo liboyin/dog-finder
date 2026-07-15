@@ -88,6 +88,7 @@ def _entry_from_listing(listing: Listing, ts: str, source_kind: str) -> dict:
         "tags": [],
         "removed": False,
         "recheck": None,
+        "recheck_reason": None,
     }
 
 
@@ -154,6 +155,7 @@ def flag_disappeared(
             and entry.get("recheck") != "maybe_adopted"
         ):
             entry["recheck"] = "maybe_adopted"
+            entry["recheck_reason"] = "vanished_from_list"
             flagged.append(entry)
     return flagged
 
@@ -238,3 +240,4 @@ def apply_verdicts(state: dict, verdicts: list[dict], ts: str) -> None:
             entry["removed"] = True
         # A judged listing no longer needs re-checking.
         entry["recheck"] = None
+        entry["recheck_reason"] = None

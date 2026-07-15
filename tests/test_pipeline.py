@@ -137,7 +137,7 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         flag cleared and is reported confirmed, not left flagged."""
         state = store.empty_state()
         state["listings"]["https://x/1"] = self._qualified_entry(
-            "https://x/1", recheck="maybe_adopted")
+            "https://x/1", recheck="maybe_adopted", recheck_reason="vanished_from_list")
 
         def parse_detail(body, listing):
             listing.status = "on-hold"
@@ -150,6 +150,7 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         self.assertEqual(flagged, [])
         self.assertEqual(confirmed, {"https://x/1"})
         self.assertIsNone(state["listings"]["https://x/1"]["recheck"])
+        self.assertIsNone(state["listings"]["https://x/1"]["recheck_reason"])
         self.assertEqual(state["listings"]["https://x/1"]["status"], "on-hold")
 
     def test_adopted_detail_page_flags_maybe_adopted(self):
@@ -168,17 +169,18 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         self.assertEqual(len(flagged), 1)
         self.assertEqual(confirmed, set())
         self.assertEqual(state["listings"]["https://x/1"]["recheck"], "maybe_adopted")
+        self.assertEqual(state["listings"]["https://x/1"]["recheck_reason"], "status_adopted")
         self.assertEqual(state["listings"]["https://x/1"]["status"], "adopted")
         # A flagged (adopted) dog is not a sighting; last_seen is left untouched.
         self.assertEqual(state["listings"]["https://x/1"]["last_seen"], "20260101-000000")
 
-    def test_dead_detail_url_flags_maybe_adopted(self):
-        """A detail page that now 404s is flagged for the LLM to confirm."""
+    def test_dead_detail_url_flags_http_gone(self):
+        """A detail page that now 404s is flagged http_gone for the LLM to confirm."""
         state = store.empty_state()
         state["listings"]["https://x/1"] = self._qualified_entry("https://x/1")
 
         def boom(url, **kwargs):
-            raise FetchError("404")
+            raise FetchError("404", status=404)
 
         mod = types.SimpleNamespace(parse_detail=lambda body, listing: listing)
         with mock.patch.object(pipeline, "fetch", side_effect=boom), \
@@ -187,10 +189,49 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         self.assertEqual(len(flagged), 1)
         self.assertEqual(confirmed, set())
         self.assertEqual(state["listings"]["https://x/1"]["recheck"], "maybe_adopted")
+        self.assertEqual(state["listings"]["https://x/1"]["recheck_reason"], "http_gone")
         # Status is left untouched since no fresh detail was parsed.
         self.assertEqual(state["listings"]["https://x/1"]["status"], "available")
         # A flagged (dead-URL) dog is not a sighting; last_seen is left untouched.
         self.assertEqual(state["listings"]["https://x/1"]["last_seen"], "20260101-000000")
+
+    def test_unparseable_detail_flags_detail_unparseable(self):
+        """A detail page that no longer parses is flagged detail_unparseable."""
+        state = store.empty_state()
+        state["listings"]["https://x/1"] = self._qualified_entry("https://x/1")
+
+        def bad_detail(body, listing):
+            raise ParseError("drift")
+
+        mod = types.SimpleNamespace(parse_detail=bad_detail)
+        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
+             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
+            confirmed, flagged = pipeline._recheck_qualified_details(state, "TS")
+        self.assertEqual(len(flagged), 1)
+        self.assertEqual(state["listings"]["https://x/1"]["recheck_reason"], "detail_unparseable")
+
+    def test_transient_fetch_error_does_not_flag_or_clear(self):
+        """A 403/timeout is not evidence: it neither flags a clean dog nor clears
+        an existing flag, so an outage day can't mass-mark dogs adopted."""
+        state = store.empty_state()
+        clean = self._qualified_entry("https://x/clean")
+        already = self._qualified_entry(
+            "https://x/flagged", recheck="maybe_adopted", recheck_reason="http_gone")
+        state["listings"]["https://x/clean"] = clean
+        state["listings"]["https://x/flagged"] = already
+
+        def boom(url, **kwargs):
+            raise FetchError("403 forbidden", status=403)
+
+        mod = types.SimpleNamespace(parse_detail=lambda body, listing: listing)
+        with mock.patch.object(pipeline, "fetch", side_effect=boom), \
+             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
+            confirmed, flagged = pipeline._recheck_qualified_details(state, "TS")
+        self.assertEqual(flagged, [])
+        self.assertEqual(confirmed, set())
+        self.assertIsNone(clean["recheck"])  # clean dog not newly flagged
+        self.assertEqual(already["recheck"], "maybe_adopted")  # existing flag kept
+        self.assertEqual(already["recheck_reason"], "http_gone")
 
     def test_skips_non_qualified_and_removed(self):
         """Rejected and removed entries are never re-fetched."""

@@ -20,7 +20,17 @@ RETRY_BACKOFF_S = 1.5
 
 
 class FetchError(Exception):
-    """Raised when a URL cannot be retrieved (network error or non-2xx status)."""
+    """Raised when a URL cannot be retrieved (network error or non-2xx status).
+
+    Args:
+        message: Human-readable failure description.
+        status: The HTTP response status when the failure was an HTTP error
+            (e.g. 404), else None for transport-level failures (timeout, DNS).
+    """
+
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 @dataclass
@@ -48,6 +58,7 @@ def fetch(url: str, *, timeout: int = DEFAULT_TIMEOUT, retries: int = 1) -> Fetc
         FetchError: If every attempt fails or a non-2xx status is returned.
     """
     last_error: Exception | None = None
+    last_status: int | None = None
     for attempt in range(retries + 1):
         try:
             request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
@@ -59,8 +70,22 @@ def fetch(url: str, *, timeout: int = DEFAULT_TIMEOUT, retries: int = 1) -> Fetc
                     body=raw.decode("utf-8", errors="replace"),
                     bytes=len(raw),
                 )
-        except (urllib.error.URLError, TimeoutError, OSError) as error:
+        except urllib.error.HTTPError as error:
+            # HTTPError is a URLError subclass, so it must be caught first. A
+            # permanent 4xx won't change on retry, so stop immediately; other
+            # statuses (5xx) fall through to the transient retry path.
             last_error = error
+            last_status = error.code
+            if 400 <= error.code < 500:
+                break
             if attempt < retries:
                 time.sleep(RETRY_BACKOFF_S)
-    raise FetchError(f"GET {url} failed after {retries + 1} attempt(s): {last_error}")
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            last_error = error
+            last_status = None  # transport failure has no HTTP status
+            if attempt < retries:
+                time.sleep(RETRY_BACKOFF_S)
+    raise FetchError(
+        f"GET {url} failed after {attempt + 1} attempt(s): {last_error}",
+        status=last_status,
+    )
