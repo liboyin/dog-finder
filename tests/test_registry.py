@@ -35,6 +35,24 @@ class ResolveTest(unittest.TestCase):
         self.assertIsNone(registry.resolve({"listing_url": "https://sydneydogsandcatshome.org/adopt/"}))
 
 
+class RegistryContractTest(unittest.TestCase):
+    def test_every_parser_defines_parse_detail(self):
+        """Vanish detection re-fetches each qualified dog's detail page, so a
+        registered parser without parse_detail would silently disable it."""
+        for host, module in registry._REGISTRY:
+            self.assertTrue(
+                hasattr(module, "parse_detail"),
+                f"parser for {host} must define parse_detail",
+            )
+
+    def test_every_parser_has_a_unique_source_kind(self):
+        """by_source_kind maps a stored SOURCE_KIND back to its parser for the
+        detail recheck, so each module needs a distinct, defined SOURCE_KIND."""
+        kinds = [getattr(module, "SOURCE_KIND", None) for _, module in registry._REGISTRY]
+        self.assertTrue(all(kinds), "every registered parser must define SOURCE_KIND")
+        self.assertEqual(len(kinds), len(set(kinds)), "SOURCE_KIND values must be unique")
+
+
 class BySourceKindTest(unittest.TestCase):
     def test_known_kinds_resolve_to_their_module(self):
         """"petrescue" and "wollongong" resolve to their respective modules."""

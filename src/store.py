@@ -122,59 +122,19 @@ def touch(state: dict, url: str, ts: str) -> None:
         entry["last_seen"] = ts
 
 
-def flag_disappeared(
-    state: dict, present: set[str], ts: str, fetched_shelters: set[str]
-) -> list[dict]:
-    """Flag qualified dogs that vanished from this run's successfully-fetched shelters.
-
-    A qualified, non-removed listing not seen this run is a likely adoption, but
-    could also be a transient fetch gap, so it is flagged ``recheck =
-    "maybe_adopted"`` for the LLM to confirm rather than removed here. Flagging is
-    scoped to ``fetched_shelters``: a dog whose shelter failed (or wasn't scanned)
-    this run is not flagged, so a single shelter outage can't mark its still-listed
-    dogs as maybe-adopted.
-
-    Args:
-        state: The state document (mutated in place).
-        present: Canonical URLs seen on successfully-fetched pages this run.
-        ts: This run's timestamp.
-        fetched_shelters: Names of shelters whose fetch succeeded this run (OK or
-            EMPTY_OK). Only dogs belonging to one of these are eligible for flagging.
-
-    Returns:
-        The list of entries newly flagged for re-check.
-    """
-    flagged = []
-    for entry in state["listings"].values():
-        if (
-            entry.get("source_kind") != "browser"
-            and entry.get("shelter") in fetched_shelters
-            and entry.get("verdict") == QUALIFIED
-            and not entry.get("removed")
-            and canonical(entry["url"]) not in present
-            and entry.get("recheck") != "maybe_adopted"
-        ):
-            entry["recheck"] = "maybe_adopted"
-            entry["recheck_reason"] = "vanished_from_list"
-            flagged.append(entry)
-    return flagged
-
-
 def flag_stale_browser(state: dict, cutoff: str) -> list[dict]:
     """Flag qualified browser-sourced dogs unseen since the cutoff for re-check.
 
     Browser-discovered listings have no static parser, so the detail recheck
-    skips them and ``flag_disappeared`` excludes them — nothing else ever
-    questions whether a browser-found qualified dog is still available, and its
-    only exit would be the 90-day prune (a silent, unconfirmed drop). This flags
-    a qualified, non-removed ``source_kind == "browser"`` entry with no current
-    recheck whose ``last_seen`` predates the cutoff as ``maybe_adopted`` (reason
-    "stale_browser") so the LLM re-verifies it via the browser path. The browser
-    pass bumps ``last_seen`` every run it re-emits the dog, so a short cutoff
-    tolerates a couple of failed passes without false-flagging a present dog.
-
-    Kept separate from ``flag_disappeared`` (which handles static shelters) so
-    the two vanish-detection paths stay independently removable.
+    (which is the vanish-detection path for static shelters) skips them —
+    nothing else ever questions whether a browser-found qualified dog is still
+    available, and its only exit would be the 90-day prune (a silent, unconfirmed
+    drop). This flags a qualified, non-removed ``source_kind == "browser"`` entry
+    with no current recheck whose ``last_seen`` predates the cutoff as
+    ``maybe_adopted`` (reason "stale_browser") so the LLM re-verifies it via the
+    browser path. The browser pass bumps ``last_seen`` every run it re-emits the
+    dog, so a short cutoff tolerates a couple of failed passes without
+    false-flagging a present dog.
 
     Args:
         state: The state document (mutated in place).

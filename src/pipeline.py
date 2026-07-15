@@ -4,11 +4,12 @@ Two subcommands frame one nightly run:
 
 * ``collect`` — fetch and parse the server-rendered PetRescue shelters, dedup
   against ``state.json``, detail-fetch genuinely new dogs, re-fetch the detail
-  page of already-qualified dogs to refresh status and catch a now-dead detail
-  URL, flag qualified dogs that vanished (from their list page or detail page)
-  as ``maybe_adopted``, and write ``pending.json`` (dogs needing a verdict)
-  plus ``fetch_manifest.json`` (per-source outcomes, incl. the
-  ``NEEDS_BROWSER`` shelters the LLM must handle via the browser MCP).
+  page of already-qualified dogs to refresh status and flag a dog whose detail
+  page died or now reports adopted as ``maybe_adopted`` (stale browser-sourced
+  dogs, which have no static detail page, are flagged separately), and write
+  ``pending.json`` (dogs needing a verdict) plus ``fetch_manifest.json``
+  (per-source outcomes, incl. the ``NEEDS_BROWSER`` shelters the LLM must handle
+  via the browser MCP).
 * ``apply`` — merge the LLM's ``verdicts.json`` into ``state.json`` and
   re-render the human-facing ``dog-index.md`` from state.
 
@@ -115,7 +116,7 @@ def _fetch_all_pages(module, start_url: str, base: manifest.SourceResult) -> lis
 
 
 def _collect_source(
-    shelter: dict, module, url: str, state: dict, present: set[str], ts: str
+    shelter: dict, module, url: str, state: dict, ts: str
 ) -> manifest.SourceResult:
     """Fetch and parse one shelter page with its parser, upserting dogs to state.
 
@@ -124,7 +125,6 @@ def _collect_source(
         module: The parser module resolved for this shelter.
         url: The page URL to fetch.
         state: The state document (mutated in place).
-        present: Set of canonical URLs seen on OK pages this run (mutated).
         ts: This run's timestamp.
 
     Returns:
@@ -151,7 +151,6 @@ def _collect_source(
     new_cards = []
     for card in (c for c in cards if is_dog(c)):
         key = canonical(card.url)
-        present.add(key)
         if key in state["listings"]:
             store.touch(state, card.url, ts)
         else:
@@ -180,47 +179,40 @@ def _collect_source(
     return base
 
 
-def _recheck_qualified_details(state: dict, ts: str) -> tuple[set[str], list[dict]]:
+def _recheck_qualified_details(state: dict, ts: str) -> list[dict]:
     """Re-fetch each qualified listing's own detail page to catch drift its
     shelter's list page won't show: a status change (e.g. available -> on-hold),
     an explicit "adopted" status while the card lingers on the shelter's list,
     or a detail URL that now 404s outright.
 
-    Scoped to qualified, non-removed listings (the handful actually shown in
-    the index) with a registered detail parser; browser-discovered listings
-    have no static parser to re-fetch with and are skipped, matching
-    ``flag_disappeared``'s existing browser exclusion. Unlike that function,
-    every qualifying entry is re-fetched regardless of any recheck flag already
-    on it (from a prior day, or a card the shelter's own list page dropped this
-    run e.g. an on-hold dog) — a direct read of the dog's own page is strictly
-    more authoritative than its absence from a list render, so it can resolve a
-    stale flag on its own rather than waiting on the LLM.
+    This is the sole vanish-detection path for static (non-browser) shelters: a
+    direct read of each qualified dog's own page is strictly more authoritative
+    than its presence or absence in a list render, so it both confirms live dogs
+    and catches gone ones without the coarser "missing from the list this run"
+    heuristic that once lived in ``flag_disappeared``. Because every registered
+    parser defines ``parse_detail`` (enforced by a registry test), this covers
+    every static-shelter qualified dog; browser-discovered listings have no
+    static parser and are handled separately by ``store.flag_stale_browser``.
 
     A detail page that 404/410s ("http_gone"), one that no longer parses
     ("detail_unparseable"), or one now marked "adopted" ("status_adopted") is
     flagged ``maybe_adopted`` for the LLM to confirm and prune, with the reason
-    recorded in ``recheck_reason`` — code detects the anomaly, the LLM confirms
-    removal, matching how ``flag_disappeared`` already handles a vanished
-    listing. A transient fetch failure (403/5xx/timeout/DNS) is NOT evidence the
-    dog is gone, so the entry is left untouched and retried next run. Anything
-    else confirms the dog is still up: its status is refreshed, its ``last_seen``
-    is bumped to this run (a direct detail-page confirmation is a sighting, so a
-    long-on-hold dog dropped from its list render isn't pruned despite being
-    confirmed live daily), any recheck flag/reason is cleared, and its URL is
-    reported back so the caller can count it as present before running
-    ``flag_disappeared`` (whose coarser "missing from the list page" signal would
-    otherwise re-flag it).
+    recorded in ``recheck_reason``. A transient fetch failure (403/5xx/timeout/
+    DNS) is NOT evidence the dog is gone, so the entry is left untouched and
+    retried next run. Anything else confirms the dog is still up: its status is
+    refreshed, its ``last_seen`` is bumped to this run (a direct detail-page
+    confirmation is a sighting, so a long-on-hold dog dropped from its list
+    render isn't pruned despite being confirmed live daily), and any recheck
+    flag/reason is cleared.
 
     Args:
         state: The state document (mutated in place).
         ts: This run's timestamp, recorded as ``last_seen`` on confirmed dogs.
 
     Returns:
-        A (confirmed_urls, flagged) tuple: canonical URLs confirmed still live
-        and not adopted, and the entries newly flagged maybe_adopted because
-        their detail page is now unreachable or reports "adopted".
+        The entries newly flagged maybe_adopted because their detail page is now
+        unreachable (gone), unparseable, or reports "adopted".
     """
-    confirmed: set[str] = set()
     flagged: list[dict] = []
     for entry in state["listings"].values():
         if entry.get("verdict") != store.QUALIFIED or entry.get("removed"):
@@ -238,8 +230,7 @@ def _recheck_qualified_details(state: dict, ts: str) -> tuple[set[str], list[dic
             else:
                 # 403/5xx/timeout/DNS: a transient fetch gap, not evidence the
                 # dog is gone. Leave the entry untouched (an existing flag too)
-                # and retry next run — the per-dog analogue of the shelter-outage
-                # scoping in flag_disappeared.
+                # and retry next run.
                 logger.info("recheck: transient fetch failure for %s (%s); not flagging",
                             entry["url"], error)
             continue
@@ -258,8 +249,7 @@ def _recheck_qualified_details(state: dict, ts: str) -> tuple[set[str], list[dic
             entry["recheck"] = None
             entry["recheck_reason"] = None
             entry["last_seen"] = ts
-            confirmed.add(canonical(entry["url"]))
-    return confirmed, flagged
+    return flagged
 
 
 def _flag(entry: dict, reason: str, flagged: list[dict]) -> None:
@@ -295,7 +285,6 @@ def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
     state = store.load_state(state_path)
 
     run_manifest = manifest.Manifest(run_ts=ts)
-    present: set[str] = set()
 
     total = len(shelters)
     logger.info("collect: %d shelters; state has %d known listing(s)", total, len(state["listings"]))
@@ -315,30 +304,22 @@ def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
                     render=render_kind, status=manifest.STATUS_NEEDS_BROWSER, error=reason)
             else:
                 module, url = resolved
-                result = _collect_source(shelter, module, url, state, present, ts)
+                result = _collect_source(shelter, module, url, state, ts)
         run_manifest.add(result)
         logger.info("[%2d/%d] %-13s %s%s", index, total, result.status,
                     shelter["name"], _result_detail(result))
 
-    fetched_shelters = {
-        source.shelter for source in run_manifest.sources
-        if source.status in (manifest.STATUS_OK, manifest.STATUS_EMPTY_OK)
-    }
-    detail_confirmed, detail_flagged = _recheck_qualified_details(state, ts)
+    detail_flagged = _recheck_qualified_details(state, ts)
     if detail_flagged:
         logger.info("flagged %d qualified dog(s) as maybe_adopted (detail page unreachable or adopted)",
                     len(detail_flagged))
-
-    flagged = store.flag_disappeared(state, present | detail_confirmed, ts, fetched_shelters)
-    if flagged:
-        logger.info("flagged %d qualified dog(s) as maybe_adopted (vanished this run)", len(flagged))
 
     browser_cutoff = (datetime.now() - timedelta(days=BROWSER_STALE_DAYS)).strftime("%Y%m%d-%H%M%S")
     stale_browser = store.flag_stale_browser(state, browser_cutoff)
     if stale_browser:
         logger.info("flagged %d stale browser-sourced dog(s) as maybe_adopted (unseen since %s)",
                     len(stale_browser), browser_cutoff)
-    flagged = flagged + detail_flagged + stale_browser
+    flagged = detail_flagged + stale_browser
     store.save_state(state_path, state)
 
     pending = store.pending_listings(state)

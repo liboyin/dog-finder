@@ -1,10 +1,13 @@
 """Map a shelter to the parser module that can handle its listings.
 
-A parser module exposes ``parse_list(html) -> list[Listing]`` and, when the list
-page lacks fields that need a per-dog page, ``parse_detail(html, listing)``.
-``resolve`` picks the first parser whose host appears in the shelter's
-``listing_url`` or ``petrescue_url`` — so a JS-rendered shelter that also
-cross-posts to PetRescue is still handled in code via that cross-post.
+A parser module exposes ``parse_list(html) -> list[Listing]`` and
+``parse_detail(html, listing)`` (both required — vanish detection re-fetches the
+detail page of every qualified dog, so a parser without ``parse_detail`` can't be
+registered; see ``parsers/base.py``). ``resolve`` picks the first parser whose
+host appears in the shelter's ``listing_url`` or ``petrescue_url`` — so a
+JS-rendered shelter that also cross-posts to PetRescue is still handled in code
+via that cross-post. ``by_source_kind`` maps a stored ``SOURCE_KIND`` back to its
+module for the detail recheck.
 """
 from __future__ import annotations
 

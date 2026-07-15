@@ -5,11 +5,16 @@ Every site parser produces :class:`Listing` records and raises
 uniformly. Generic size/sex/species helpers live here too, since several sites
 describe a dog with the same "size sex breed species" shape PetRescue uses.
 
-A parser module exposes ``parse_list(html) -> list[Listing]`` and may optionally
-define:
+A parser module MUST expose two functions:
 
+* ``parse_list(html) -> list[Listing]`` — card-level listings from a list page.
 * ``parse_detail(html, listing) -> Listing`` — enrich a listing from its own
-  detail page (the pipeline detail-fetches only when this exists).
+  detail page. This is REQUIRED, not optional: vanish detection re-fetches the
+  detail page of every qualified static-shelter dog each run, so a parser
+  without ``parse_detail`` can't be registered (a registry test enforces this).
+
+It MAY optionally define:
+
 * ``prepare_url(url) -> str`` — normalize/optimize the start URL before the
   first fetch (e.g. enlarge a paginated page size).
 * ``next_page_url(html, current_url) -> str | None`` — the next results page, or
