@@ -62,6 +62,14 @@ prose Markdown:
   adopted — emitting a single `verdicts.json`. It never hand-edits the index or state; code
   renders `data/dog-index.md` from `state.json`, touching only the region between the
   `<!-- DOGS:BEGIN/END -->` markers so human-authored prose is preserved.
+- **`source` and `shelter` are distinct.** `source` records *what found* a dog — the config
+  entry that surfaced it, which for the aggregator searches is a query like "PetRescue NSW poodle
+  search", not an organization. `shelter` is the *real* rescue group or council that holds the dog,
+  extracted from the listing's own detail page (the PetRescue group link, or a fixed name for
+  single-org sites). The index shows `shelter`, falling back to `source` then "unknown", so a human
+  sees the actual shelter rather than the aggregator that surfaced it. Because there is no
+  cross-source dedup, the same dog found under its own-site *and* via a PetRescue search appears as
+  two entries with two URLs — an accepted consequence of keying on URL.
 - **JS-rendered shelters use a browser MCP.** Shelters whose listings are JavaScript-rendered
   (`render: js`), or non-PetRescue own-sites with no code parser, are flagged `NEEDS_BROWSER` in
   the manifest; the LLM drives Playwright / Claude-in-Chrome MCP (typically via a Haiku subagent)

@@ -38,6 +38,15 @@ class RenderBlockTest(unittest.TestCase):
         self.assertIn("Test Shelter (Sydney, NSW)", block)
         self.assertIn("_(verify drive time)_", block)
 
+    def test_shelter_falls_back_to_source_then_unknown(self):
+        """The Shelter line shows the real shelter, else the finding source, else 'unknown'."""
+        self.assertIn("Real Shelter (", render.render_block(
+            dict(ENTRY, shelter="Real Shelter", source="agg search")))
+        self.assertIn("agg search (", render.render_block(
+            dict(ENTRY, shelter=None, source="agg search")))
+        self.assertIn("unknown (", render.render_block(
+            dict(ENTRY, shelter=None, source=None)))
+
 
 class RenderIndexTest(unittest.TestCase):
     def test_region_replaced_and_date_updated(self):

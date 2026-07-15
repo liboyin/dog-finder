@@ -46,6 +46,7 @@ class ParseDetailTest(unittest.TestCase):
         self.assertIn("10 months", listing.age)
         self.assertNotIn("Please note", listing.age)
         self.assertEqual(listing.status, "available")
+        self.assertEqual(listing.shelter, "Wollongong Pet Connection")
 
     def test_missing_rows_raises(self):
         """A detail page with none of the expected rows signals markup drift."""

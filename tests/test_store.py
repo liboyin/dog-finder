@@ -29,6 +29,16 @@ class UpsertTest(unittest.TestCase):
         self.assertEqual(entry["last_seen"], TS2)
         self.assertEqual(entry["status"], "on-hold")
 
+    def test_records_source_apart_from_shelter(self):
+        """A new entry keeps the finding source separate from the real shelter."""
+        state = store.empty_state()
+        store.upsert_listing(
+            state, _listing("https://x/listings/1", shelter="RSPCA Illawarra Shelter"),
+            TS1, "petrescue", "PetRescue NSW poodle search (aggregator)")
+        entry = state["listings"]["https://x/listings/1"]
+        self.assertEqual(entry["shelter"], "RSPCA Illawarra Shelter")
+        self.assertEqual(entry["source"], "PetRescue NSW poodle search (aggregator)")
+
 
 class SaveStateTest(unittest.TestCase):
     def test_save_then_load_round_trips(self):
@@ -130,6 +140,43 @@ class PruneStaleTest(unittest.TestCase):
         self.assertIn("https://x/y", state["listings"])
 
 
+class MigrateSourceFieldTest(unittest.TestCase):
+    AGGREGATORS = {"PetRescue NSW poodle search (aggregator)"}
+
+    def _state(self):
+        """State with one aggregator-found and one real-shelter entry, pre-split."""
+        state = store.empty_state()
+        state["listings"]["agg"] = {
+            "url": "agg", "shelter": "PetRescue NSW poodle search (aggregator)"}
+        state["listings"]["real"] = {"url": "real", "shelter": "RSPCA Illawarra Shelter"}
+        return state
+
+    def test_aggregator_shelter_moved_to_source_and_nulled(self):
+        """An aggregator name moves to source and is cleared from shelter."""
+        state = self._state()
+        store.migrate_source_field(state, self.AGGREGATORS)
+        agg = state["listings"]["agg"]
+        self.assertEqual(agg["source"], "PetRescue NSW poodle search (aggregator)")
+        self.assertIsNone(agg["shelter"])
+
+    def test_real_shelter_kept_in_both_fields(self):
+        """A real shelter name stays in shelter and is copied to source."""
+        state = self._state()
+        store.migrate_source_field(state, self.AGGREGATORS)
+        real = state["listings"]["real"]
+        self.assertEqual(real["shelter"], "RSPCA Illawarra Shelter")
+        self.assertEqual(real["source"], "RSPCA Illawarra Shelter")
+
+    def test_idempotent(self):
+        """Running the migration twice yields the same state as running it once."""
+        once = self._state()
+        store.migrate_source_field(once, self.AGGREGATORS)
+        twice = self._state()
+        store.migrate_source_field(twice, self.AGGREGATORS)
+        store.migrate_source_field(twice, self.AGGREGATORS)
+        self.assertEqual(once, twice)
+
+
 class ApplyVerdictsTest(unittest.TestCase):
     def test_sets_verdict_and_creates_browser_entry(self):
         """Verdicts update existing entries and create browser-found ones."""
@@ -140,15 +187,18 @@ class ApplyVerdictsTest(unittest.TestCase):
         state["listings"]["https://x/listings/1"]["recheck_reason"] = "http_gone"
         store.apply_verdicts(state, [
             {"url": "https://x/listings/1", "verdict": "qualified", "summary": "Good dog.", "tags": ["t"]},
-            {"url": "https://site/fido", "verdict": "qualified", "name": "Fido", "breed": "Maltese", "source_kind": "browser"},
+            {"url": "https://site/fido", "verdict": "qualified", "name": "Fido", "breed": "Maltese",
+             "shelter": "Fido Rescue Inc", "source_kind": "browser", "source": "DoodleAid"},
         ], TS2)
         first = state["listings"]["https://x/listings/1"]
         self.assertEqual(first["verdict"], store.QUALIFIED)
         self.assertEqual(first["summary"], "Good dog.")
         self.assertIsNone(first["recheck"])
         self.assertIsNone(first["recheck_reason"])
-        self.assertIn("https://site/fido", state["listings"])
-        self.assertEqual(state["listings"]["https://site/fido"]["name"], "Fido")
+        fido = state["listings"]["https://site/fido"]
+        self.assertEqual(fido["name"], "Fido")
+        self.assertEqual(fido["shelter"], "Fido Rescue Inc")
+        self.assertEqual(fido["source"], "DoodleAid")
 
     def test_removed_flag(self):
         """A verdict with removed=True hides the listing from render."""

@@ -66,7 +66,7 @@ def save_state(path: str, state: dict) -> None:
         raise
 
 
-def _entry_from_listing(listing: Listing, ts: str, source_kind: str) -> dict:
+def _entry_from_listing(listing: Listing, ts: str, source_kind: str, source: str | None) -> dict:
     """Build a new state entry from a freshly-parsed listing."""
     return {
         "url": listing.url,
@@ -78,6 +78,7 @@ def _entry_from_listing(listing: Listing, ts: str, source_kind: str) -> dict:
         "species": listing.species,
         "location": listing.location,
         "shelter": listing.shelter,
+        "source": source,
         "fee": listing.fee,
         "status": listing.status,
         "source_kind": source_kind,
@@ -92,7 +93,10 @@ def _entry_from_listing(listing: Listing, ts: str, source_kind: str) -> dict:
     }
 
 
-def upsert_listing(state: dict, listing: Listing, ts: str, source_kind: str = "petrescue") -> bool:
+def upsert_listing(
+    state: dict, listing: Listing, ts: str, source_kind: str = "petrescue",
+    source: str | None = None,
+) -> bool:
     """Insert or update a code-parsed listing in the state.
 
     Args:
@@ -100,6 +104,8 @@ def upsert_listing(state: dict, listing: Listing, ts: str, source_kind: str = "p
         listing: The parsed listing to record.
         ts: This run's timestamp.
         source_kind: The parser's source identifier (e.g. "petrescue").
+        source: The config source that found the dog (e.g. an aggregator search
+            name). Distinct from ``listing.shelter``, the real organization.
 
     Returns:
         True if the listing was new (and therefore needs a verdict), else False.
@@ -107,7 +113,7 @@ def upsert_listing(state: dict, listing: Listing, ts: str, source_kind: str = "p
     key = canonical(listing.url)
     existing = state["listings"].get(key)
     if existing is None:
-        state["listings"][key] = _entry_from_listing(listing, ts, source_kind)
+        state["listings"][key] = _entry_from_listing(listing, ts, source_kind, source)
         return True
     existing["last_seen"] = ts
     if listing.status:
@@ -180,6 +186,36 @@ def prune_stale(state: dict, cutoff: str) -> list[dict]:
     return [state["listings"].pop(key) for key in stale_keys]
 
 
+def migrate_source_field(state: dict, aggregator_source_names: set[str]) -> None:
+    """Backfill the source/shelter split on entries predating it (idempotent).
+
+    Before this split, ``shelter`` stored the config *source* name — misleading
+    when that source is an aggregator search rather than a real organization. For
+    each entry lacking a ``source`` field, this copies the current ``shelter``
+    into ``source`` (it recorded what found the dog), then nulls ``shelter`` when
+    it named an aggregator search, so the real shelter can be backfilled from the
+    detail page on the next recheck. A real-shelter name stays in both fields
+    (harmless and mostly correct). Entries already carrying ``source`` are left
+    untouched, so re-running is a no-op.
+
+    Applied once to ``data/state.json`` when the split landed; every entry
+    created since carries ``source``, so this is not wired into the daily run. It
+    is retained (and kept idempotent) to re-migrate an old ``state.json`` restored
+    from history or backup.
+
+    Args:
+        state: The state document (mutated in place).
+        aggregator_source_names: Config source names that are aggregator searches,
+            not shelters; their stored ``shelter`` value is cleared.
+    """
+    for entry in state["listings"].values():
+        if "source" in entry:
+            continue
+        entry["source"] = entry.get("shelter")
+        if entry.get("shelter") in aggregator_source_names:
+            entry["shelter"] = None
+
+
 def pending_listings(state: dict) -> list[dict]:
     """Return entries the LLM must judge: pending verdicts plus re-checks."""
     return [
@@ -222,6 +258,7 @@ def apply_verdicts(state: dict, verdicts: list[dict], ts: str) -> None:
             entry = {
                 "url": url,
                 "source_kind": verdict.get("source_kind", "browser"),
+                "source": verdict.get("source"),
                 "first_seen": ts,
                 "removed": False,
             }

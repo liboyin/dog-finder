@@ -128,6 +128,22 @@ class ParseDetailTest(unittest.TestCase):
         self.assertEqual(listing.fee, "$500.00")
         self.assertEqual(listing.status, "available")
 
+    def test_detail_fixture_extracts_real_shelter(self):
+        """The detail page's group link yields the real shelter, not the source."""
+        listing = petrescue.Listing(url="https://www.petrescue.com.au/listings/1192935")
+        petrescue.parse_detail(_load("petrescue_detail.html"), listing)
+        self.assertEqual(listing.shelter, "RSPCA Illawarra Shelter")
+
+    def test_group_name_unslugs_url_when_text_empty(self):
+        """With no anchor text, the shelter is un-slugged from the group href."""
+        html = ('<a data-label="group-name" '
+                'href="/groups/10748/RSPCA-Illawarra-Shelter"></a>')
+        self.assertEqual(petrescue._group_name(html), "RSPCA Illawarra Shelter")
+
+    def test_group_name_absent_link_is_none_not_error(self):
+        """A listing with no group link leaves shelter None (not a ParseError)."""
+        self.assertIsNone(petrescue._group_name("<html>no group here</html>"))
+
     def test_missing_ldjson_raises(self):
         """A detail page without the Thing ld+json signals markup drift."""
         listing = petrescue.Listing(url="https://www.petrescue.com.au/listings/1")

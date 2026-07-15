@@ -81,6 +81,23 @@ class PaginationLoopTest(unittest.TestCase):
         self.assertIn("detail fetch/parse failure", res.error or "")
         self.assertIn("https://x/1", state["listings"])
 
+    def test_new_card_records_source_and_parsed_shelter(self):
+        """A new card's entry keeps the config source name and the shelter
+        parse_detail supplies as separate fields — neither collapses into the other."""
+        mod = types.SimpleNamespace(
+            SOURCE_KIND="fake",
+            parse_list=lambda body: [Listing(url="https://x/1")] if body == "p1" else [],
+            next_page_url=lambda body, current: None,
+            parse_detail=lambda body, listing: setattr(listing, "shelter", "Real Shelter Inc") or listing,
+        )
+        state = store.empty_state()
+        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)):
+            pipeline._collect_source(
+                {"name": "Some Aggregator Search", "listing_url": "p1"}, mod, "p1", state, "TS")
+        entry = state["listings"]["https://x/1"]
+        self.assertEqual(entry["source"], "Some Aggregator Search")
+        self.assertEqual(entry["shelter"], "Real Shelter Inc")
+
     def test_max_pages_cap(self):
         """An endless pager stops at MAX_PAGES and notes the cap."""
         mod = types.SimpleNamespace(
@@ -130,6 +147,21 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         self.assertEqual(state["listings"]["https://x/1"]["status"], "on-hold")
         # A confirmed detail recheck counts as a sighting, so last_seen advances.
         self.assertEqual(state["listings"]["https://x/1"]["last_seen"], "TS")
+
+    def test_recheck_backfills_parsed_shelter(self):
+        """A successful recheck copies the parser's real shelter onto the entry."""
+        state = store.empty_state()
+        state["listings"]["https://x/1"] = self._qualified_entry("https://x/1", shelter=None)
+
+        def parse_detail(body, listing):
+            listing.shelter = "RSPCA Illawarra Shelter"
+            return listing
+
+        mod = types.SimpleNamespace(parse_detail=parse_detail)
+        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
+             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
+            pipeline._recheck_qualified_details(state, "TS")
+        self.assertEqual(state["listings"]["https://x/1"]["shelter"], "RSPCA Illawarra Shelter")
 
     def test_confirming_fine_clears_a_stale_recheck_flag(self):
         """A dog flagged maybe_adopted (e.g. its card dropped from a list

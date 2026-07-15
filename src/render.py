@@ -92,7 +92,7 @@ def render_block(entry: dict) -> str:
         [
             f"### [NEW {date}] {_value(entry.get('name'), 'Unnamed')} — {', '.join(headline_bits)}",
             f"- **URL:** {entry.get('url')}",
-            f"- **Shelter:** {_value(entry.get('shelter'), 'unknown')} ({_value(entry.get('location'), 'location unstated')})",
+            f"- **Shelter:** {_value(entry.get('shelter') or entry.get('source'), 'unknown')} ({_value(entry.get('location'), 'location unstated')})",
             f"- **Status:** {_value(entry.get('status'), 'available')} · **Fee:** {_value(entry.get('fee'))} · **Size:** {_value(entry.get('size'))}",
             f"- **date_indexed:** {date}",
             f"- {_value(entry.get('summary'), 'No summary.')}{tag_suffix}",

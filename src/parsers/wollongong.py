@@ -77,4 +77,5 @@ def parse_detail(html_text: str, listing: Listing) -> Listing:
     listing.sex = sex
     listing.age = age
     listing.status = "available"
+    listing.shelter = "Wollongong Pet Connection"  # single-org council site
     return listing

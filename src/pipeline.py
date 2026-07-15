@@ -161,7 +161,6 @@ def _collect_source(
     source_kind = getattr(module, "SOURCE_KIND", "petrescue")
     detail_errors: list[str] = []
     for card in new_cards:
-        card.shelter = card.shelter or name
         if has_detail:
             try:
                 detail = fetch(card.url)
@@ -169,7 +168,9 @@ def _collect_source(
             except (FetchError, ParseError) as error:
                 detail_errors.append(str(error))
             time.sleep(DETAIL_FETCH_DELAY_S)
-        store.upsert_listing(state, card, ts, source_kind)
+        # `name` is the config source that found the dog; card.shelter (set by
+        # parse_detail) is the real organization and may be None.
+        store.upsert_listing(state, card, ts, source_kind, name)
         logger.debug("      + %s — %s", card.name, card.breed)
 
     if detail_errors:
@@ -243,6 +244,10 @@ def _recheck_qualified_details(state: dict, ts: str) -> list[dict]:
             time.sleep(DETAIL_FETCH_DELAY_S)
         if listing.status:
             entry["status"] = listing.status
+        if listing.shelter:
+            # Backfill the real organization onto existing qualified dogs whose
+            # stored shelter predates the source/shelter split.
+            entry["shelter"] = listing.shelter
         if listing.status == "adopted":
             _flag(entry, "status_adopted", flagged)
         else:

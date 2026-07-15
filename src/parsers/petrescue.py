@@ -24,6 +24,7 @@ from src.parsers.base import (
     is_dog,
     species_of,
     split_species,
+    strip_tags,
 )
 
 # Re-export shared names so callers/tests can use src.parsers.petrescue.X.
@@ -57,6 +58,12 @@ _ONHOLD_RE = re.compile(r">\s*On hold\s*<", re.I)
 _ADOPTED_RE = re.compile(r">\s*Adopted\s*<", re.I)
 _NEXT_TAG_RE = re.compile(r"<a\b[^>]*\brel=['\"]next['\"][^>]*>", re.I)
 _HREF_RE = re.compile(r"href=['\"]([^'\"]+)['\"]")
+# The rescue group that actually holds the dog: the detail page links to it via
+# an anchor tagged data-label="group-name" whose href is /groups/<id>/<Name-Slug>.
+_GROUP_RE = re.compile(
+    r"<a\b([^>]*\bdata-label=['\"]group-name['\"][^>]*)>(.*?)</a>", re.S | re.I
+)
+_GROUP_SLUG_RE = re.compile(r"/groups/\d+/([^'\"?]+)")
 
 
 def parse_list(html_text: str) -> list[Listing]:
@@ -97,14 +104,15 @@ def parse_list(html_text: str) -> list[Listing]:
 
 
 def parse_detail(html_text: str, listing: Listing) -> Listing:
-    """Enrich a card-level Listing with breed/size/sex/fee/status from its page.
+    """Enrich a card-level Listing with breed/size/sex/fee/status/shelter.
 
     Args:
         html_text: Raw HTML of a ``/listings/<id>`` detail page.
         listing: The card-level Listing to enrich (mutated in place and returned).
 
     Returns:
-        The same Listing with breed (and size/sex/fee/status) filled where found.
+        The same Listing with breed (and size/sex/fee/status/shelter) filled
+        where found.
 
     Raises:
         ParseError: If the page lacks the ``Thing`` ld+json description used to
@@ -133,7 +141,26 @@ def parse_detail(html_text: str, listing: Listing) -> Listing:
     fee_match = _FEE_RE.search(html_text)
     listing.fee = fee_match.group(1) if fee_match else None
     listing.status = _detect_status(html_text)
+    listing.shelter = _group_name(html_text)
     return listing
+
+
+def _group_name(html_text: str) -> str | None:
+    """Return the rescue group holding the dog, or None if the page has no link.
+
+    Prefers the group anchor's visible text; falls back to un-slugging the URL
+    tail (``RSPCA-Illawarra-Shelter`` -> ``RSPCA Illawarra Shelter``). A missing
+    group link is not markup drift — some listings omit it — so this returns None
+    rather than raising.
+    """
+    match = _GROUP_RE.search(html_text)
+    if match is None:
+        return None
+    inner = strip_tags(match.group(2))
+    if inner:
+        return inner
+    slug = first_group(_GROUP_SLUG_RE, match.group(1))
+    return clean(slug.replace("-", " ")) if slug else None
 
 
 def _detect_status(html_text: str) -> str:
