@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-07-13
+- **Last refreshed:** 2026-07-15
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -54,13 +54,6 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Status:** available · **Fee:** not stated · **Size:** Toy
 - **date_indexed:** 2026-07-05
 - Female malshi (Maltese × Shih Tzu), toy-sized, 2 years old, available in Sydney NSW via PAWS.
-
-### [NEW 2026-07-02] Fluffy — Maltese x Australian Silky Terrier Mix, not stated, Male
-- **URL:** https://www.petrescue.com.au/listings/1201259
-- **Shelter:** PetRescue NSW poodle search (aggregator) (Running Stream, NSW)
-- **Status:** on-hold · **Fee:** $1,500.00 · **Size:** Small
-- **date_indexed:** 2026-07-02
-- Male Maltese × Australian Silky Terrier, small, Running Stream NSW; both parents low-shedding; $1,500.  _(verify drive time)_
 
 ### [NEW 2026-06-26] Snowball - 9 Year Old Maltese X — Maltese Mix, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1200348
