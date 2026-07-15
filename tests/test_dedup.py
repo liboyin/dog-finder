@@ -7,11 +7,19 @@ from src import dedup
 
 
 class CanonicalTest(unittest.TestCase):
-    def test_trailing_slash_and_fragment_removed(self):
-        """Trailing slash and fragment are normalized away."""
+    def test_trailing_slash_removed_host_lowercased_fragment_kept(self):
+        """Trailing slash and host case normalize away, but the per-dog fragment stays."""
         self.assertEqual(
-            dedup.canonical("https://Example.com/Path/#frag"),
-            "https://example.com/Path",
+            dedup.canonical("https://Example.com/Path/#bindi"),
+            "https://example.com/Path#bindi",
+        )
+
+    def test_two_fragments_on_one_page_stay_distinct(self):
+        """Two dogs on the same page keep separate keys via their fragments."""
+        base = "https://www.paws.com.au/FosterCare/FosterCareDogs.html"
+        self.assertNotEqual(
+            dedup.canonical(base + "#bindi"),
+            dedup.canonical(base + "#rex"),
         )
 
 

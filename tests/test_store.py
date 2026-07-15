@@ -157,6 +157,18 @@ class ApplyVerdictsTest(unittest.TestCase):
         store.apply_verdicts(state, [{"url": "https://x/listings/1", "verdict": "qualified", "removed": True}], TS2)
         self.assertEqual(store.qualified_for_render(state), [])
 
+    def test_two_fragment_dogs_on_one_page_coexist(self):
+        """Two dogs sharing a page URL but distinct #slug fragments both persist, neither overwriting the other."""
+        state = store.empty_state()
+        page = "https://www.paws.com.au/FosterCare/FosterCareDogs.html"
+        store.apply_verdicts(state, [
+            {"url": page + "#bindi", "verdict": "qualified", "name": "Bindi", "source_kind": "browser"},
+            {"url": page + "#rex", "verdict": "qualified", "name": "Rex", "source_kind": "browser"},
+        ], TS2)
+        self.assertEqual(state["listings"][page + "#bindi"]["name"], "Bindi")
+        self.assertEqual(state["listings"][page + "#rex"]["name"], "Rex")
+        self.assertEqual(len(store.qualified_for_render(state)), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

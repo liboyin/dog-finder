@@ -107,9 +107,14 @@ prose Markdown:
 - **Place name approximates drive time.** "Within ~4 hours of Sydney" is judged from the stated
   town/region against known NSW + ACT geography, not a routing API; borderline towns are kept with
   a `verify drive time` tag.
-- **A listing URL is a stable, unique identity.** State and dedup are keyed by URL, so each dog is
-  assumed to map to one durable listing URL. A re-listed dog with a new URL is treated as new; a
-  qualified dog that vanishes is treated as adopted, confirmed via a 404 or adopted page.
+- **A URL (with its fragment) is a dog's identity.** State and dedup are keyed by the canonical URL
+  *including* the fragment, so a dog normally maps to one durable listing URL, but a page that hosts
+  several dogs at one URL (e.g. PAWS) distinguishes them by a reproducible `url#name-slug` anchor —
+  without which every dog on the page would collapse into one entry and all but the last would be
+  lost. A re-listed dog with a new URL is treated as new; a qualified dog that vanishes is treated as
+  adopted, confirmed via a 404 or adopted page. The same dog cross-listed under two sources
+  (own-site and PetRescue) has two distinct URLs and is accepted as two entries — there is no
+  cross-source dedup.
 - **PetRescue's server-rendered listings are the common case.** Most shelters syndicate to
   PetRescue in a static, parseable format the code handles directly; JS-rendered sites and
   own-sites are the exception, flagged for the browser path. The parser assumes that static
