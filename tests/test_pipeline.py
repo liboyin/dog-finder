@@ -9,7 +9,7 @@ import unittest
 from datetime import datetime
 from unittest import mock
 
-from src import pipeline, store
+from src import manifest, pipeline, store
 from src.fetch import FetchError, FetchResult
 from src.parsers.base import Listing, ParseError
 
@@ -340,6 +340,31 @@ class BrowserStaleCollectTest(unittest.TestCase):
             final = store.load_state(state_path)["listings"]
         self.assertEqual(final["stale"]["recheck_reason"], "stale_browser")
         self.assertIsNone(final["fresh"]["recheck"])
+
+
+class CollectStatsTest(unittest.TestCase):
+    def _source(self, status: str, n_new: int = 0) -> manifest.SourceResult:
+        """A SourceResult with the given status (and optional new-dog count)."""
+        return manifest.SourceResult(
+            shelter="S", listing_url="u", status=status, n_new=n_new)
+
+    def test_empty_counted_apart_from_errors(self):
+        """EMPTY_OK feeds n_empty, not n_errors — only PARSE/FETCH errors are errors."""
+        sources = [
+            self._source(manifest.STATUS_OK, n_new=2),
+            self._source(manifest.STATUS_EMPTY_OK),
+            self._source(manifest.STATUS_EMPTY_OK),
+            self._source(manifest.STATUS_PARSE_ERROR),
+            self._source(manifest.STATUS_FETCH_ERROR),
+            self._source(manifest.STATUS_NEEDS_BROWSER),
+        ]
+        stats = pipeline._collect_stats(sources, n_maybe_adopted=1, n_pending=3)
+        self.assertEqual(stats["n_new"], 2)
+        self.assertEqual(stats["n_empty"], 2)
+        self.assertEqual(stats["n_errors"], 2)  # PARSE + FETCH only, not the 2 empties
+        self.assertEqual(stats["n_needs_browser"], 1)
+        self.assertEqual(stats["n_maybe_adopted"], 1)
+        self.assertEqual(stats["n_pending"], 3)
 
 
 if __name__ == "__main__":

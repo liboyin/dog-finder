@@ -284,7 +284,8 @@ def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
         out_dir: Directory for this run's artifacts (created if absent).
 
     Returns:
-        A stats dict: n_new, n_needs_browser, n_errors, n_maybe_adopted.
+        The stats dict built by ``_collect_stats`` (n_new, n_needs_browser,
+        n_empty, n_errors, n_maybe_adopted, n_pending).
     """
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs(out_dir, exist_ok=True)
@@ -346,12 +347,36 @@ def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
         json.dump({"run_ts": ts, "pending": pending}, out, indent=2, ensure_ascii=False)
     run_manifest.write(os.path.join(out_dir, "fetch_manifest.json"))
 
+    return _collect_stats(run_manifest.sources, len(flagged), len(pending))
+
+
+def _collect_stats(sources: list[manifest.SourceResult], n_maybe_adopted: int, n_pending: int) -> dict:
+    """Summarize a run's per-source manifest into collect's return stats.
+
+    EMPTY_OK is counted separately as ``n_empty`` rather than folded into
+    ``n_errors``: a legitimately-empty shelter (several are, most days) is not a
+    failure, and lumping the two trains a human to ignore the one signal that
+    matters — a PARSE_ERROR or FETCH_ERROR that needs fixing.
+
+    Args:
+        sources: The manifest's per-source :class:`manifest.SourceResult` list.
+        n_maybe_adopted: Count of dogs flagged maybe_adopted this run.
+        n_pending: Count of dogs needing a verdict.
+
+    Returns:
+        The stats dict returned by ``collect`` (n_new, n_needs_browser, n_empty,
+        n_errors, n_maybe_adopted, n_pending).
+    """
     return {
-        "n_new": sum((s.n_new or 0) for s in run_manifest.sources),
-        "n_needs_browser": sum(s.status == manifest.STATUS_NEEDS_BROWSER for s in run_manifest.sources),
-        "n_errors": sum(s.status in (manifest.STATUS_PARSE_ERROR, manifest.STATUS_FETCH_ERROR, manifest.STATUS_EMPTY_OK) for s in run_manifest.sources),
-        "n_maybe_adopted": len(flagged),
-        "n_pending": len(pending),
+        "n_new": sum((s.n_new or 0) for s in sources),
+        "n_needs_browser": sum(s.status == manifest.STATUS_NEEDS_BROWSER for s in sources),
+        "n_empty": sum(s.status == manifest.STATUS_EMPTY_OK for s in sources),
+        "n_errors": sum(
+            s.status in (manifest.STATUS_PARSE_ERROR, manifest.STATUS_FETCH_ERROR)
+            for s in sources
+        ),
+        "n_maybe_adopted": n_maybe_adopted,
+        "n_pending": n_pending,
     }
 
 
@@ -505,7 +530,7 @@ def main() -> int:
         print(
             f"collect complete: {stats['n_new']} new, {stats['n_pending']} pending, "
             f"{stats['n_maybe_adopted']} maybe-adopted, {stats['n_needs_browser']} need browser, "
-            f"{stats['n_errors']} source error(s)"
+            f"{stats['n_empty']} empty, {stats['n_errors']} source error(s)"
         )
     else:
         n_qualified = apply(args.state, args.verdicts, args.index)
