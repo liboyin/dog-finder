@@ -78,6 +78,62 @@ class PendingAndDisappearTest(unittest.TestCase):
         self.assertIsNone(state["listings"]["https://x/listings/9"]["recheck"])
 
 
+class FlagStaleBrowserTest(unittest.TestCase):
+    CUTOFF = "20260301-000000"
+
+    def _browser_entry(self, url: str, **overrides) -> dict:
+        """A qualified browser-sourced entry, stale (last_seen before cutoff) by default."""
+        entry = {
+            "url": url, "verdict": store.QUALIFIED, "removed": False,
+            "source_kind": "browser", "recheck": None, "last_seen": "20260101-000000",
+        }
+        entry.update(overrides)
+        return entry
+
+    def test_flags_stale_qualified_browser_dog(self):
+        """A qualified browser dog unseen since the cutoff is flagged stale_browser."""
+        state = store.empty_state()
+        state["listings"]["u"] = self._browser_entry("u")
+        flagged = store.flag_stale_browser(state, self.CUTOFF)
+        self.assertEqual(len(flagged), 1)
+        self.assertEqual(state["listings"]["u"]["recheck"], "maybe_adopted")
+        self.assertEqual(state["listings"]["u"]["recheck_reason"], "stale_browser")
+
+    def test_fresh_browser_dog_not_flagged(self):
+        """A browser dog seen after the cutoff is left alone — no false flag."""
+        state = store.empty_state()
+        state["listings"]["u"] = self._browser_entry("u", last_seen="20260401-000000")
+        self.assertEqual(store.flag_stale_browser(state, self.CUTOFF), [])
+        self.assertIsNone(state["listings"]["u"]["recheck"])
+
+    def test_cutoff_boundary_is_exclusive(self):
+        """A dog last seen exactly at the cutoff is not yet stale (strict <)."""
+        state = store.empty_state()
+        state["listings"]["u"] = self._browser_entry("u", last_seen=self.CUTOFF)
+        self.assertEqual(store.flag_stale_browser(state, self.CUTOFF), [])
+
+    def test_non_browser_source_not_flagged(self):
+        """A stale static-source dog is the detail recheck's job, not this one's."""
+        state = store.empty_state()
+        state["listings"]["u"] = self._browser_entry("u", source_kind="petrescue")
+        self.assertEqual(store.flag_stale_browser(state, self.CUTOFF), [])
+
+    def test_non_qualified_or_removed_not_flagged(self):
+        """Only qualified, non-removed dogs are shown in the index and worth re-checking."""
+        state = store.empty_state()
+        state["listings"]["rej"] = self._browser_entry("rej", verdict=store.REJECTED)
+        state["listings"]["rm"] = self._browser_entry("rm", removed=True)
+        self.assertEqual(store.flag_stale_browser(state, self.CUTOFF), [])
+
+    def test_already_flagged_not_reflagged(self):
+        """An existing recheck flag is preserved rather than overwritten stale_browser."""
+        state = store.empty_state()
+        state["listings"]["u"] = self._browser_entry(
+            "u", recheck="maybe_adopted", recheck_reason="vanished_from_list")
+        self.assertEqual(store.flag_stale_browser(state, self.CUTOFF), [])
+        self.assertEqual(state["listings"]["u"]["recheck_reason"], "vanished_from_list")
+
+
 class PruneStaleTest(unittest.TestCase):
     def test_prunes_only_entries_unseen_before_cutoff(self):
         """Entries last seen before the cutoff are removed; newer ones are kept."""

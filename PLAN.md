@@ -12,7 +12,7 @@ Flip a row to `DONE` **in the same commit** that completes the work package, and
 |----|-------|--------|
 | WP1 | Confirmed rechecks bump `last_seen` | DONE |
 | WP2 | `FetchError` status + `recheck_reason` | DONE |
-| WP3 | Browser-dog staleness recheck | TODO |
+| WP3 | Browser-dog staleness recheck | DONE |
 | WP4 | `EMPTY_OK` out of `n_errors` | TODO |
 | WP5 | Launcher hardening | TODO |
 | WP6 | Drop Labradoodle Association source | TODO |

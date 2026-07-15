@@ -160,6 +160,45 @@ def flag_disappeared(
     return flagged
 
 
+def flag_stale_browser(state: dict, cutoff: str) -> list[dict]:
+    """Flag qualified browser-sourced dogs unseen since the cutoff for re-check.
+
+    Browser-discovered listings have no static parser, so the detail recheck
+    skips them and ``flag_disappeared`` excludes them — nothing else ever
+    questions whether a browser-found qualified dog is still available, and its
+    only exit would be the 90-day prune (a silent, unconfirmed drop). This flags
+    a qualified, non-removed ``source_kind == "browser"`` entry with no current
+    recheck whose ``last_seen`` predates the cutoff as ``maybe_adopted`` (reason
+    "stale_browser") so the LLM re-verifies it via the browser path. The browser
+    pass bumps ``last_seen`` every run it re-emits the dog, so a short cutoff
+    tolerates a couple of failed passes without false-flagging a present dog.
+
+    Kept separate from ``flag_disappeared`` (which handles static shelters) so
+    the two vanish-detection paths stay independently removable.
+
+    Args:
+        state: The state document (mutated in place).
+        cutoff: A 'YYYYMMDD-HHMMSS' timestamp; entries last seen before it are flagged.
+
+    Returns:
+        The list of entries newly flagged for re-check.
+    """
+    flagged = []
+    for entry in state["listings"].values():
+        if (
+            entry.get("source_kind") == "browser"
+            and entry.get("verdict") == QUALIFIED
+            and not entry.get("removed")
+            and not entry.get("recheck")
+            and entry.get("last_seen")
+            and entry["last_seen"] < cutoff
+        ):
+            entry["recheck"] = "maybe_adopted"
+            entry["recheck_reason"] = "stale_browser"
+            flagged.append(entry)
+    return flagged
+
+
 def prune_stale(state: dict, cutoff: str) -> list[dict]:
     """Remove listings whose last_seen predates the cutoff, bounding file growth.
 

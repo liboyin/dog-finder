@@ -38,6 +38,7 @@ from src.parsers.base import Listing, ParseError, is_dog
 DETAIL_FETCH_DELAY_S = 0.5
 PAGE_DELAY_S = 0.5
 MAX_PAGES = 30  # safety cap on pages followed per source
+BROWSER_STALE_DAYS = 3  # a qualified browser dog unseen this long is re-verified
 
 logger = logging.getLogger("dog_finder.pipeline")
 
@@ -330,7 +331,13 @@ def collect(shelters_path: str, state_path: str, out_dir: str) -> dict:
     flagged = store.flag_disappeared(state, present | detail_confirmed, ts, fetched_shelters)
     if flagged:
         logger.info("flagged %d qualified dog(s) as maybe_adopted (vanished this run)", len(flagged))
-    flagged = flagged + detail_flagged
+
+    browser_cutoff = (datetime.now() - timedelta(days=BROWSER_STALE_DAYS)).strftime("%Y%m%d-%H%M%S")
+    stale_browser = store.flag_stale_browser(state, browser_cutoff)
+    if stale_browser:
+        logger.info("flagged %d stale browser-sourced dog(s) as maybe_adopted (unseen since %s)",
+                    len(stale_browser), browser_cutoff)
+    flagged = flagged + detail_flagged + stale_browser
     store.save_state(state_path, state)
 
     pending = store.pending_listings(state)

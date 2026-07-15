@@ -6,6 +6,7 @@ import os
 import tempfile
 import types
 import unittest
+from datetime import datetime
 from unittest import mock
 
 from src import pipeline, store
@@ -304,6 +305,41 @@ class CollectRecheckIntegrationTest(unittest.TestCase):
             final = store.load_state(state_path)["listings"]["https://fake/dog/1"]
         self.assertIsNone(final["recheck"])
         self.assertEqual(final["status"], "on-hold")
+
+
+class BrowserStaleCollectTest(unittest.TestCase):
+    """collect must wire flag_stale_browser with a now-minus-BROWSER_STALE_DAYS
+    cutoff so a long-unseen qualified browser dog gets re-verified rather than
+    silently aging out at the 90-day prune."""
+
+    def setUp(self):
+        """Silence the inter-fetch sleep so tests run fast."""
+        patcher = mock.patch("time.sleep")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_stale_browser_flagged_fresh_left_alone(self):
+        """A years-old browser dog is flagged stale_browser; one seen today isn't."""
+        now = datetime.now().strftime("%Y%m%d-%H%M%S")
+        with tempfile.TemporaryDirectory() as tmp:
+            shelters_path = os.path.join(tmp, "shelters.json")
+            state_path = os.path.join(tmp, "state.json")
+            out_dir = os.path.join(tmp, "out")
+            with open(shelters_path, "w", encoding="utf-8") as f:
+                json.dump([], f)  # no static sources; exercise only the flagging tail
+
+            state = store.empty_state()
+            for key, last_seen in (("stale", "20250101-000000"), ("fresh", now)):
+                state["listings"][key] = {
+                    "url": key, "verdict": store.QUALIFIED, "removed": False,
+                    "source_kind": "browser", "recheck": None, "last_seen": last_seen,
+                }
+            store.save_state(state_path, state)
+
+            pipeline.collect(shelters_path, state_path, out_dir)
+            final = store.load_state(state_path)["listings"]
+        self.assertEqual(final["stale"]["recheck_reason"], "stale_browser")
+        self.assertIsNone(final["fresh"]["recheck"])
 
 
 if __name__ == "__main__":
