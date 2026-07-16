@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-07-16
+- **Last refreshed:** 2026-07-17
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -12,6 +12,20 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ## Current candidates
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
+
+### [NEW 2026-07-17] Penelope — Poodle (Miniature), not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1204449
+- **Shelter:** DCH Animal Adoptions (Wilton, NSW)
+- **Status:** available · **Fee:** $700.00 · **Size:** Small
+- **date_indexed:** 2026-07-17
+- Small female Miniature Poodle, 5 years, at DCH Animal Adoptions, Wilton NSW; qualifying low-shed breed.
+
+### [NEW 2026-07-17] Mimi — Poodle, not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1204459
+- **Shelter:** Ozzi Hearts 4 Paws (San Remo, NSW)
+- **Status:** available · **Fee:** $950.00 · **Size:** Small
+- **date_indexed:** 2026-07-17
+- Small female Poodle, ~2 years, at Ozzi Hearts 4 Paws, San Remo NSW; low-shedding poodle breed.  _(verify coat/breed, verify drive time)_
 
 ### [NEW 2026-07-13] Winny — Poodle, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1203575
@@ -53,7 +67,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** PAWS (Providing Animals with Support) (Sydney Metropolitan area)
 - **Status:** available · **Fee:** not stated · **Size:** Toy
 - **date_indexed:** 2026-07-05
-- Female malshi (Maltese × Shih Tzu), toy-sized, 2 years old, available in Sydney NSW via PAWS.
+- Female malshi (Maltese x Shih Tzu), toy-sized, approx 2 years old, available in Sydney NSW via PAWS.
 
 ### [NEW 2026-06-26] Snowball - 9 Year Old Maltese X — Maltese Mix, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1200348
@@ -69,13 +83,6 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **date_indexed:** 2026-06-25
 - Male Shih Tzu × Maltese pair (malshi), small, Erskineville inner Sydney NSW; $1,000.
 
-### [NEW 2026-06-12] Marney — Maltese / Shih Tzu, 12 years 1 month, Female
-- **URL:** https://www.rspcansw.org.au/adopt/pet/651411/
-- **Shelter:** RSPCA NSW Rescuoodles program (Unanderra, NSW)
-- **Status:** available · **Fee:** $500.00 · **Size:** Small
-- **date_indexed:** 2026-06-12
-- Senior female Malshi (Maltese × Shih Tzu), 12 years, RSPCA Illawarra Unanderra NSW, $500.
-
 ### [NEW 2026-06-10] Marney — Maltese, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1197293
 - **Shelter:** RSPCA Illawarra Shelter (Cordeaux Heights, NSW)
@@ -88,7 +95,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** AWL NSW Eurobodalla Branch (Eurobodalla Branch)
 - **Status:** available · **Fee:** $400 · **Size:** Small
 - **date_indexed:** 2026-05-31
-- Shih Tzu × Maltese male, 3 years, small, $400 at AWL Eurobodalla; qualifying low-shed cross.  _(verify drive time)_
+- Shih Tzu x Maltese male, 3 years, small, $400 at AWL Eurobodalla; qualifying low-shed cross.  _(verify drive time)_
 
 <!-- DOGS:END -->
 
