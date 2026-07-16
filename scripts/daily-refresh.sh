@@ -103,11 +103,29 @@ The launcher merges that file into state and re-renders the index after you fini
 # schedule. 5400s (90 min) is ~7x the slowest healthy judge step observed.
 # --max-budget-usd bounds API spend but not a non-billable spin, so it is not a
 # substitute for this wall-clock guard.
+#
+# Permissions: instead of --dangerously-skip-permissions (unrestricted local
+# authority while reading arbitrary scraped web content — a prompt-injection
+# hole), the judge runs under an explicit tool allowlist in
+# .claude/judge-settings.json (no Bash; Read and Write scoped to the repo /
+# runs/). It is passed via --settings so the strict set applies ONLY to this
+# headless run, not to interactive Claude Code sessions in the repo, and
+# --permission-mode dontAsk makes the allowlist exhaustive (a non-allowed tool is
+# denied, never prompted) regardless of any defaultMode in the host user's
+# settings. Write(runs/**) is cwd-relative, which is why the `cd "$DIR"` above
+# matters. The browser-MCP tool patterns in that file are a best guess
+# (mcp__playwright__* / mcp__claude-in-chrome__*); confirm the exact tool names
+# for free on the host with `claude mcp list` (plugin installs are namespaced,
+# e.g. mcp__plugin_playwright_playwright__*) before the first paid run, and
+# refine from any denial the run surfaces — note a denial inside a Haiku browser
+# subagent may appear only in that subagent's returned text, not the parent
+# $STREAM.
 JUDGE_TIMEOUT=5400
 echo "$(date '+%F %T %Z') invoking Claude (sonnet) to judge pending dogs; live tool activity in $STREAM" >> "$LOG"
 /usr/local/bin/claude -p "$PROMPT" \
   --model sonnet \
-  --dangerously-skip-permissions \
+  --settings "$DIR/.claude/judge-settings.json" \
+  --permission-mode dontAsk \
   --max-budget-usd 2.5 \
   --output-format stream-json --verbose > "$STREAM" 2>>"$LOG" &
 CLAUDE_PID=$!

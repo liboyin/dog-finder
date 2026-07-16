@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "WebFetch",
+      "Agent",
+      "Task",
+      "ToolSearch",
+      "Write(runs/**)",
+      "mcp__playwright__*",
+      "mcp__claude-in-chrome__*"
+    ],
+    "deny": [
+      "Bash"
+    ]
+  }
+}

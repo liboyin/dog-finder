@@ -94,6 +94,14 @@ prose Markdown:
 - **A budget cap, not a throttle.** The headless `claude` invocation aborts cleanly at
   `--max-budget-usd 2.5` rather than being throttled into a multi-hour death-crawl. The figure
   comes from observed per-run cost (a low-shed run hit US$2.72).
+- **The judge runs under a tool allowlist, not skip-permissions.** The judge reads arbitrary
+  scraped web content, so granting it unrestricted local authority (`--dangerously-skip-permissions`)
+  would give prompt-injection file, shell, and git reach. Instead it runs with a narrow allowlist in
+  `.claude/judge-settings.json` (`Read`, `WebFetch`, subagent/`Task`, `ToolSearch`, `Write` scoped to
+  `runs/`, and the browser-MCP tool patterns — **no Bash**), passed via `--settings` so the strict
+  set applies only to the headless judge run and not to interactive sessions in the repo. Scheduled
+  runs never need Bash because the launcher runs `collect` first; the prompt's "generate the
+  artifacts yourself" fallback is interactive-only.
 - **Git tracks the valuable artifacts and their inputs.** Tracked: `state.json` (the authoritative
   record), the rendered index, shelter config, prompt, code, and deploy files. The per-run
   artifacts (`pending.json`, `verdicts.json`, `fetch_manifest.json`, stream/report) and logs are
