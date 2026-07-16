@@ -21,7 +21,7 @@ Flip a row to `DONE` **in the same commit** that completes the work package, and
 | WP8 | Split `source` vs `shelter` | DONE |
 | WP10 | Sanitize rendered content | DONE |
 | WP11 | Run/log retention | DONE |
-| WP9 | Judge permission allowlist | DONE (committed unverified — owner must run §6 paid verification) |
+| WP9 | Judge permission allowlist | DONE (verified 2026-07-17, run ts=20260717-011133: verdicts written, zero denials, clean apply+commit. CLI 2.1.202 ignores path-scoped Write rules, so scoping is enforced by the PreToolUse hook `scripts/judge-write-guard.py`) |
 | WP13 | Residual documentation fixes | DONE |
 
 **Recommended order** (rows above are in it): WP1–WP6 in any order (independent) → WP12 (needs WP2+WP3; doing it before WP8 means WP8 never touches `flag_disappeared`) → WP7 → WP8 → WP10 → WP11 → WP9 (its paid verification run needs scheduling care) → WP13 last.
