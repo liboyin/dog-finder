@@ -20,7 +20,7 @@ Flip a row to `DONE` **in the same commit** that completes the work package, and
 | WP7 | Per-dog identity on shared-URL pages | DONE |
 | WP8 | Split `source` vs `shelter` | DONE |
 | WP10 | Sanitize rendered content | DONE |
-| WP11 | Run/log retention | TODO |
+| WP11 | Run/log retention | DONE |
 | WP9 | Judge permission allowlist | TODO |
 | WP13 | Residual documentation fixes | TODO |
 

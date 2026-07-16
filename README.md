@@ -102,6 +102,10 @@ prose Markdown:
   auto-commits and pushes `state.json`/`dog-index.md` (`Automated run on YYYY-MM-DD`) to `origin`
   **only when the dog list's membership changes** — a dog added or dropped. In-place edits that
   keep the same set of dogs stay local, so commit history tracks membership changes, not every run.
+- **Two retention windows keep things bounded.** State entries unseen for 90 days are pruned from
+  `state.json` at each run's start; per-run artifact directories under `runs/` older than 30 days
+  are swept at each run's end. Both are self-maintaining, so neither the tracked state nor the
+  gitignored run artifacts grow without limit.
 
 ## Assumptions
 

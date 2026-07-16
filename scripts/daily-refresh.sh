@@ -195,5 +195,14 @@ if [ -s "$REPORT" ]; then
   cat "$REPORT" >> "$LOG"
 fi
 
+# Retention: drop per-run artifact directories older than 30 days so runs/ stays
+# bounded. Scoped by -maxdepth 1 plus the YYYYMMDD-HHMMSS name pattern, so it
+# only targets top-level run-dir-shaped names; the [ -d ] guard covers an
+# empty/unset $RUNS.
+if [ -d "$RUNS" ]; then
+  find "$RUNS" -maxdepth 1 -type d -name '[0-9]*-[0-9]*' -mtime +30 -exec rm -rf {} + \
+    >> "$LOG" 2>&1 || echo "$(date '+%F %T %Z') WARN: run-artifact retention sweep failed" >> "$LOG"
+fi
+
 echo "===== run finished $(date '+%F %T %Z') (exit $CODE) =====" >> "$LOG"
 exit $CODE
