@@ -112,12 +112,16 @@ The launcher merges that file into state and re-renders the index after you fini
 # headless run, not to interactive Claude Code sessions in the repo, and
 # --permission-mode dontAsk makes the allowlist exhaustive (a non-allowed tool is
 # denied, never prompted) regardless of any defaultMode in the host user's
-# settings. The Write allow needs BOTH pattern forms: the 2026-07-16
-# verification run proved the relative Write(runs/**) does NOT match the
-# absolute verdicts path this script hands the judge (the write was denied and
-# the run produced no verdicts), so the absolute //-prefixed rule carries the
-# grant; the relative form is kept for any cwd-relative write the judge tries.
-# The browser-MCP tool patterns in that file are a best guess
+# settings. Write scoping is enforced by the PreToolUse hook
+# scripts/judge-write-guard.py rather than a Write(...) permission rule: paid
+# runs on 2026-07-16/17 plus cheap probes proved this CLI version (2.1.202)
+# ignores path-scoped Write rules on BOTH the allow and deny side (relative,
+# ./-prefixed, and //-absolute forms all failed), and an unscoped "Write" allow
+# would grant filesystem-wide writes. The hook allows Write/Edit-family calls
+# only under runs/ and denies everything else; if the hook itself breaks, no
+# allow is emitted and dontAsk denies — fail-closed. Re-test the native
+# Write(runs/**) rule after CLI upgrades; if it works again, it can replace the
+# hook. The browser-MCP tool patterns in that file are a best guess
 # (mcp__playwright__* / mcp__claude-in-chrome__*); confirm the exact tool names
 # for free on the host with `claude mcp list` (plugin installs are namespaced,
 # e.g. mcp__plugin_playwright_playwright__*) before the first paid run, and

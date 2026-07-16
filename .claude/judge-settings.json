@@ -6,13 +6,24 @@
       "Agent",
       "Task",
       "ToolSearch",
-      "Write(runs/**)",
-      "Write(//Users/fanguard/Code/dog-finder/runs/**)",
       "mcp__playwright__*",
       "mcp__claude-in-chrome__*"
     ],
     "deny": [
       "Bash"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/fanguard/Code/dog-finder/scripts/judge-write-guard.py"
+          }
+        ]
+      }
     ]
   }
 }
