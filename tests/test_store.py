@@ -52,19 +52,6 @@ class SaveStateTest(unittest.TestCase):
             self.assertEqual([f for f in os.listdir(tmp) if f != "state.json"], [])
 
 
-class PendingTest(unittest.TestCase):
-    def test_pending_includes_pending_and_rechecks(self):
-        """pending_listings returns pending verdicts and re-check-flagged entries."""
-        state = store.empty_state()
-        store.upsert_listing(state, _listing("https://x/listings/1"), TS1)
-        state["listings"]["https://x/listings/2"] = {
-            "url": "https://x/listings/2", "verdict": store.QUALIFIED, "removed": False,
-            "source_kind": "petrescue", "recheck": "maybe_adopted",
-        }
-        urls = {e["url"] for e in store.pending_listings(state)}
-        self.assertEqual(urls, {"https://x/listings/1", "https://x/listings/2"})
-
-
 class FlagStaleBrowserTest(unittest.TestCase):
     CUTOFF = "20260301-000000"
 
@@ -116,9 +103,9 @@ class FlagStaleBrowserTest(unittest.TestCase):
         """An existing recheck flag is preserved rather than overwritten stale_browser."""
         state = store.empty_state()
         state["listings"]["u"] = self._browser_entry(
-            "u", recheck="maybe_adopted", recheck_reason="vanished_from_list")
+            "u", recheck="maybe_adopted", recheck_reason="http_gone")
         self.assertEqual(store.flag_stale_browser(state, self.CUTOFF), [])
-        self.assertEqual(state["listings"]["u"]["recheck_reason"], "vanished_from_list")
+        self.assertEqual(state["listings"]["u"]["recheck_reason"], "http_gone")
 
 
 class PruneStaleTest(unittest.TestCase):
@@ -175,6 +162,19 @@ class MigrateSourceFieldTest(unittest.TestCase):
         store.migrate_source_field(twice, self.AGGREGATORS)
         store.migrate_source_field(twice, self.AGGREGATORS)
         self.assertEqual(once, twice)
+
+
+class PendingTest(unittest.TestCase):
+    def test_pending_includes_pending_and_rechecks(self):
+        """pending_listings returns pending verdicts and re-check-flagged entries."""
+        state = store.empty_state()
+        store.upsert_listing(state, _listing("https://x/listings/1"), TS1)
+        state["listings"]["https://x/listings/2"] = {
+            "url": "https://x/listings/2", "verdict": store.QUALIFIED, "removed": False,
+            "source_kind": "petrescue", "recheck": "maybe_adopted",
+        }
+        urls = {e["url"] for e in store.pending_listings(state)}
+        self.assertEqual(urls, {"https://x/listings/1", "https://x/listings/2"})
 
 
 class ApplyVerdictsTest(unittest.TestCase):

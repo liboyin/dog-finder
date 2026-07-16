@@ -164,12 +164,12 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         self.assertEqual(state["listings"]["https://x/1"]["shelter"], "RSPCA Illawarra Shelter")
 
     def test_confirming_fine_clears_a_stale_recheck_flag(self):
-        """A dog flagged maybe_adopted (e.g. its card dropped from a list
-        render) whose own detail page still resolves as not-adopted has its
-        flag cleared and is reported confirmed, not left flagged."""
+        """A dog flagged maybe_adopted (e.g. its detail page briefly 404'd on a
+        prior run) whose own detail page now resolves as not-adopted has its
+        flag and reason cleared, not left flagged."""
         state = store.empty_state()
         state["listings"]["https://x/1"] = self._qualified_entry(
-            "https://x/1", recheck="maybe_adopted", recheck_reason="vanished_from_list")
+            "https://x/1", recheck="maybe_adopted", recheck_reason="http_gone")
 
         def parse_detail(body, listing):
             listing.status = "on-hold"
