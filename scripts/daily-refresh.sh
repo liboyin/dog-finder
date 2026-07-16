@@ -112,8 +112,12 @@ The launcher merges that file into state and re-renders the index after you fini
 # headless run, not to interactive Claude Code sessions in the repo, and
 # --permission-mode dontAsk makes the allowlist exhaustive (a non-allowed tool is
 # denied, never prompted) regardless of any defaultMode in the host user's
-# settings. Write(runs/**) is cwd-relative, which is why the `cd "$DIR"` above
-# matters. The browser-MCP tool patterns in that file are a best guess
+# settings. The Write allow needs BOTH pattern forms: the 2026-07-16
+# verification run proved the relative Write(runs/**) does NOT match the
+# absolute verdicts path this script hands the judge (the write was denied and
+# the run produced no verdicts), so the absolute //-prefixed rule carries the
+# grant; the relative form is kept for any cwd-relative write the judge tries.
+# The browser-MCP tool patterns in that file are a best guess
 # (mcp__playwright__* / mcp__claude-in-chrome__*); confirm the exact tool names
 # for free on the host with `claude mcp list` (plugin installs are namespaced,
 # e.g. mcp__plugin_playwright_playwright__*) before the first paid run, and
