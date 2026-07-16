@@ -12,6 +12,18 @@ from datetime import datetime
 
 
 def main() -> int:
+    """Parse a run's stream-json for its result and emit usage stats.
+
+    Reads the four positional CLI args (``<stream_file> <report_file> <ts>
+    <exit_code>``), writes the judge's human-readable final result text to
+    ``report_file``, and prints an aggregate plus per-model usage block to stdout
+    (the launcher appends it to ``usage.log``). A stream that is missing or has no
+    ``result`` event (a hard failure) prints a ``NO_RESULT`` marker instead, and
+    ``report_file`` is left unwritten.
+
+    Returns:
+        0 always; failures are reported in the printed line, not the exit code.
+    """
     stream_file, report_file, ts, exit_code = sys.argv[1:5]
 
     result = None

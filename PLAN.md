@@ -22,7 +22,7 @@ Flip a row to `DONE` **in the same commit** that completes the work package, and
 | WP10 | Sanitize rendered content | DONE |
 | WP11 | Run/log retention | DONE |
 | WP9 | Judge permission allowlist | TODO |
-| WP13 | Residual documentation fixes | TODO |
+| WP13 | Residual documentation fixes | DONE |
 
 **Recommended order** (rows above are in it): WP1–WP6 in any order (independent) → WP12 (needs WP2+WP3; doing it before WP8 means WP8 never touches `flag_disappeared`) → WP7 → WP8 → WP10 → WP11 → WP9 (its paid verification run needs scheduling care) → WP13 last.
 

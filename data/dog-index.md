@@ -96,12 +96,12 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 
 ## Monitored shelters
 
-The daily refresh's scrape targets live in **[shelters.json](shelters.json)** — single source of truth. To add, remove, or correct a shelter, edit that file. The cron job reads it directly each run.
+The daily refresh's scrape targets live in **[shelters.json](../config/shelters.json)** — single source of truth. To add, remove, or correct a shelter, edit that file. The launchd agent reads it directly each run.
 
 ---
 
 ## Notes on coverage gaps (from initial sweep)
 
-- Some council/independent sites use JavaScript-rendered listings (BMACC, Sutherland Shire, Campbelltown, Eurobodalla, Dog Rescue Newcastle's own page, ACT DAS, Hawkesbury CAS, Blacktown PetsOnline). The static-fetch sweep returned 403 / empty content on these. **The daily refresh leans on their PetRescue cross-posts** wherever the shelter publishes there; for those that don't (e.g. BMACC, Sutherland Shire's own pages), the cron-job's subagents will attempt the Chrome MCP if connected and otherwise note the page as `unreachable`.
+- Some council/independent sites use JavaScript-rendered listings (BMACC, Sutherland Shire, Campbelltown, Eurobodalla, Dog Rescue Newcastle's own page, ACT DAS, Hawkesbury CAS, Blacktown PetsOnline). The static-fetch sweep returned 403 / empty content on these. **The daily refresh leans on their PetRescue cross-posts** wherever the shelter publishes there; for those that don't (e.g. BMACC, Sutherland Shire's own pages), the launchd agent's subagents will attempt the Chrome MCP if connected and otherwise note the page as `unreachable`.
 - Aus Poodle Haven's site was returning ECONNREFUSED on 2026-05-19. The daily job will keep retrying.
 - No poodle/doodle-specific rescue groups were found in the PetRescue NSW directory (357 groups checked) beyond what's listed above.

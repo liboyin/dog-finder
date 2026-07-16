@@ -10,8 +10,8 @@ You are the daily-refresh judge for the Sydney-area small low-shedding, low-odou
 
 - Shelter list: `/Users/fanguard/Code/dog-finder/config/shelters.json` — source of truth for what to scrape.
 - The launcher gives you absolute paths (below) to this run's `pending.json` (dogs needing a verdict), `fetch_manifest.json` (per-source outcomes), and the `verdicts.json` you must WRITE.
-- You never touch `data/dog-index.md` or `data/state.json` — the launcher merges your `verdicts.json` into state and re-renders the index after you finish.
-- If the paths are missing (e.g. run interactively), generate them first: `python3 -m src.pipeline collect --shelters config/shelters.json --state data/state.json --out runs/<ts>/` (from `/Users/fanguard/Code/dog-finder`).
+- Never edit `data/state.json` or `data/dog-index.md` yourself — the pipeline, not you, writes those files: the launcher merges your `verdicts.json` into state and re-renders the index after you finish.
+- If this run's artifacts are missing (interactive use only), generate them by running the pipeline — the pipeline writes state, you do not: `python3 -m src.pipeline collect --shelters config/shelters.json --state data/state.json --out runs/<ts>/` (from `/Users/fanguard/Code/dog-finder`).
 
 ## Process
 

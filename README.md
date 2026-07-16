@@ -93,8 +93,7 @@ prose Markdown:
   existed, silently re-rendering the same index from unchanged state every run.
 - **A budget cap, not a throttle.** The headless `claude` invocation aborts cleanly at
   `--max-budget-usd 2.5` rather than being throttled into a multi-hour death-crawl. The figure
-  comes from observed per-run cost (a low-shed run hit US$2.72) and will be revisited once the
-  code-delegation refactor lowers it.
+  comes from observed per-run cost (a low-shed run hit US$2.72).
 - **Git tracks the valuable artifacts and their inputs.** Tracked: `state.json` (the authoritative
   record), the rendered index, shelter config, prompt, code, and deploy files. The per-run
   artifacts (`pending.json`, `verdicts.json`, `fetch_manifest.json`, stream/report) and logs are
@@ -143,6 +142,30 @@ prose Markdown:
   that only ever lists a breed the filter always excludes (labradoodles: typically >10 kg and a
   shedding parent) earns no coverage; DoodleAid is kept because it also carries qualifying small
   oodles.
+- **Unknown species is treated as a dog.** A listing whose species can't be parsed is kept as a
+  candidate rather than dropped (`base.is_dog` returns True for an unknown species), so a mislabelled
+  or unlabelled dog is never silently missed — the LLM filters any non-dog that slips through.
+- **Aggregator searches cover NSW only.** The PetRescue aggregator searches are pinned to
+  `state_id=1` (NSW), so ACT coverage rests entirely on the three ACT-specific sources (RSPCA ACT,
+  ACT Domestic Animal Services, ACT Canberra Pooch Rescue); there is no ACT aggregator sweep.
+- **A missing `state.json` silently rebuilds from empty.** `load_state` returns a fresh empty
+  document when the file is absent, so a first run (or a deleted state file) starts clean and
+  re-discovers every current listing as new rather than erroring.
+- **A dropped source's state entries are left to age out.** Removing a source from `shelters.json`
+  doesn't retroactively purge its listings; its orphaned entries simply stop being seen and age out
+  via the 90-day prune (the doggierescue parser removal, 9faef8d, set the precedent).
+
+## Test
+
+The suite is plain `unittest` with no network and no third-party dependencies, so it runs on the
+same stock interpreter the launchd job uses. From the repo root:
+
+```
+/usr/bin/python3 -m unittest discover -s tests
+```
+
+It must pass on stock macOS Python (3.9.6); this is the gate for every change. Tests use HTML
+fixtures under `tests/fixtures/` rather than live fetches.
 
 ## Deploy
 

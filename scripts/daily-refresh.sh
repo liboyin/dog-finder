@@ -75,7 +75,7 @@ echo "$(date '+%F %T %Z') prune stale state (>90d)" >> "$LOG"
 /usr/bin/python3 -m src.pipeline prune --state "$STATE" --days 90 >> "$LOG" 2>&1 \
   || echo "$(date '+%F %T %Z') WARN: prune exited non-zero" >> "$LOG"
 
-# Phase 2 collect: deterministic fetch/parse/dedup into state.json before the LLM.
+# Collect: deterministic fetch/parse/dedup into state.json before the LLM.
 # Non-fatal: if it fails, the LLM still runs and can fall back to the browser path.
 echo "$(date '+%F %T %Z') collect -> $RUNDIR" >> "$LOG"
 /usr/bin/python3 -m src.pipeline collect \
@@ -145,7 +145,7 @@ if [ ! -s "$VERDICTS" ]; then
     >> "$LOG" 2>&1 || echo "$(date '+%F %T %Z') WARN: notification failed to send" >> "$LOG"
 fi
 
-# Phase 2 apply: merge the LLM's verdicts into state and re-render the index.
+# Apply: merge the LLM's verdicts into state and re-render the index.
 # Tolerant of a missing verdicts.json (e.g. the LLM run failed) — apply just
 # re-renders from existing state in that case.
 echo "$(date '+%F %T %Z') apply verdicts -> $INDEX" >> "$LOG"
