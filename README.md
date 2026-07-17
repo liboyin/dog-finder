@@ -148,8 +148,9 @@ prose Markdown:
   out). A pruned dog that reappears is simply re-discovered as new.
 - **Breed-specific sources whose breed is categorically disqualified are not monitored.** A source
   that only ever lists a breed the filter always excludes (labradoodles: typically >10 kg and a
-  shedding parent) earns no coverage; DoodleAid is kept because it also carries qualifying small
-  oodles.
+  shedding parent) earns no coverage. DoodleAid was initially kept for its qualifying small oodles
+  but dropped on 2026-07-17 after its page turned out to list UK dogs — outside the NSW/ACT scope,
+  so it never yields a candidate either.
 - **Unknown species is treated as a dog.** A listing whose species can't be parsed is kept as a
   candidate rather than dropped (`base.is_dog` returns True for an unknown species), so a mislabelled
   or unlabelled dog is never silently missed — the LLM filters any non-dog that slips through.
