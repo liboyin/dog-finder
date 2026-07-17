@@ -13,13 +13,18 @@ from __future__ import annotations
 
 from urllib.parse import urlsplit
 
-from src.parsers import petrescue, wollongong
+from src.parsers import petrescue
 
 # (registered host, parser module). First match wins. Entries are added here as
-# each site parser lands.
+# each site parser lands — and removed when a site stops serving plain HTTP
+# clients, which routes the shelter to the browser path instead:
+#   - doggierescue.com (9faef8d): detail pages block scraping.
+#   - wollongong.nsw.gov.au (2026-07-17): the council site now returns 403 to
+#     the pipeline's fetch while rendering fine in a real browser (verified,
+#     15+ dogs listed). src/parsers/wollongong.py and its tests are kept so the
+#     entry can be restored if the block lifts.
 _REGISTRY = [
     ("petrescue.com.au", petrescue),
-    ("wollongong.nsw.gov.au", wollongong),
 ]
 
 

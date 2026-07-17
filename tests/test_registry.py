@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import unittest
 
-from src.parsers import petrescue, registry, wollongong
+from src.parsers import petrescue, registry
 
 
 class ResolveTest(unittest.TestCase):
@@ -26,9 +26,10 @@ class ResolveTest(unittest.TestCase):
         self.assertIs(module, petrescue)
         self.assertIn("petrescue.com.au", url)
 
-    def test_other_registered_sites(self):
-        """Wollongong resolves to its own parser."""
-        self.assertIs(registry.resolve({"listing_url": "https://www.wollongong.nsw.gov.au/residents/pets/find-a-pet/find-a-dog"})[0], wollongong)
+    def test_unregistered_wollongong_routes_to_browser(self):
+        """Wollongong is unregistered (site bot-blocks the pipeline since
+        2026-07-17), so it resolves to None and takes the browser path."""
+        self.assertIsNone(registry.resolve({"listing_url": "https://www.wollongong.nsw.gov.au/residents/pets/find-a-pet/find-a-dog"}))
 
     def test_unsupported_site_returns_none(self):
         """A site with no registered parser resolves to None (NEEDS_BROWSER)."""
@@ -55,13 +56,14 @@ class RegistryContractTest(unittest.TestCase):
 
 class BySourceKindTest(unittest.TestCase):
     def test_known_kinds_resolve_to_their_module(self):
-        """"petrescue" and "wollongong" resolve to their respective modules."""
+        """"petrescue" resolves to its module."""
         self.assertIs(registry.by_source_kind("petrescue"), petrescue)
-        self.assertIs(registry.by_source_kind("wollongong"), wollongong)
 
     def test_unknown_kind_returns_none(self):
-        """An unregistered kind (e.g. "browser") returns None."""
+        """An unregistered kind (e.g. "browser", or the unplugged "wollongong")
+        returns None so the recheck skips it."""
         self.assertIsNone(registry.by_source_kind("browser"))
+        self.assertIsNone(registry.by_source_kind("wollongong"))
         self.assertIsNone(registry.by_source_kind(None))
 
 

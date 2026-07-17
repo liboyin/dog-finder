@@ -3,6 +3,12 @@
 The find-a-dog page lists each dog as a ``news-list__item`` card exposing its
 detail URL and name. The per-dog page carries a simple ``<td>Label</td>
 <td>Value</td>`` table with Breed, Gender, and Age (no size or fee).
+
+UNREGISTERED since 2026-07-17: the council site now returns 403 to the
+pipeline's fetch (bot-blocking; the page renders fine in a real browser), so
+the shelter is routed to the browser path instead. The module and its tests
+are kept so it can be re-registered in ``registry._REGISTRY`` if the block
+lifts.
 """
 from __future__ import annotations
 
