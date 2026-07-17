@@ -121,19 +121,30 @@ The launcher merges that file into state and re-renders the index after you fini
 # only under runs/ and denies everything else; if the hook itself breaks, no
 # allow is emitted and dontAsk denies — fail-closed. Re-test the native
 # Write(runs/**) rule after CLI upgrades; if it works again, it can replace the
-# hook. The browser-MCP tool patterns in that file are a best guess
-# (mcp__playwright__* / mcp__claude-in-chrome__*); confirm the exact tool names
-# for free on the host with `claude mcp list` (plugin installs are namespaced,
-# e.g. mcp__plugin_playwright_playwright__*) before the first paid run, and
-# refine from any denial the run surfaces — note a denial inside a Haiku browser
-# subagent may appear only in that subagent's returned text, not the parent
-# $STREAM.
+# hook.
+#
+# Browser MCP: --chrome exposes the Claude-in-Chrome tools to this headless run
+# (probed 2026-07-17). MCP allow rules are passed via --allowedTools on the CLI
+# because rules in the --settings file are ignored for MCP tools (probed: both
+# mcp__claude-in-chrome and mcp__claude-in-chrome__* forms were denied from the
+# settings file, while the same server-level rule via --allowedTools passes).
+# The runtime dependency is the user's Chrome being open with the Claude
+# extension connected when the run fires: if it isn't, the tools error with
+# "extension not connected" and the browser subagents fall back to WebFetch —
+# the pre---chrome behavior, so this degrades gracefully. Blast radius is
+# bounded by the extension's own per-origin approval gating: unattended runs
+# can only drive origins the user has previously approved in Chrome.
+# mcp__playwright is pre-allowed for the day a Playwright MCP server is added
+# (none is configured today; that would give browser coverage without needing
+# the user's Chrome open).
 JUDGE_TIMEOUT=5400
 echo "$(date '+%F %T %Z') invoking Claude (sonnet) to judge pending dogs; live tool activity in $STREAM" >> "$LOG"
 /usr/local/bin/claude -p "$PROMPT" \
   --model sonnet \
   --settings "$DIR/.claude/judge-settings.json" \
   --permission-mode dontAsk \
+  --chrome \
+  --allowedTools "mcp__claude-in-chrome" "mcp__playwright" \
   --max-budget-usd 2.5 \
   --output-format stream-json --verbose > "$STREAM" 2>>"$LOG" &
 CLAUDE_PID=$!

@@ -5,9 +5,7 @@
       "WebFetch",
       "Agent",
       "Task",
-      "ToolSearch",
-      "mcp__playwright__*",
-      "mcp__claude-in-chrome__*"
+      "ToolSearch"
     ],
     "deny": [
       "Bash"
