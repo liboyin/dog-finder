@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-07-18
+- **Last refreshed:** 2026-07-19
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -13,10 +13,17 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
 
+### [NEW 2026-07-19] Piper — Poodle Mix, not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1204780
+- **Shelter:** Ozzi Hearts 4 Paws (Bateau Bay, NSW)
+- **Status:** available · **Fee:** $1,500.00 · **Size:** Small
+- **date_indexed:** 2026-07-19
+- Small 6-month-old Snoodle (Miniature Schnauzer x Poodle) female, low-shed cross, available in Bateau Bay NSW.  _(verify coat/breed)_
+
 ### [NEW 2026-07-18] Eddie — Maltese x Poodle (Toy), not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1204656
 - **Shelter:** Diamond in the Ruff Rescue (Maitland, NSW)
-- **Status:** available · **Fee:** $850.00 · **Size:** Small
+- **Status:** on-hold · **Fee:** $850.00 · **Size:** Small
 - **date_indexed:** 2026-07-18
 - Toy Maltese x Poodle (maltipoo), both parent breeds low-shedding; small size, Maitland NSW is within range.
 
@@ -48,13 +55,6 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **date_indexed:** 2026-07-13
 - Small male Toy Poodle mix in San Remo NSW; second parent unspecified — verify coat before contacting.  _(verify coat/breed)_
 
-### [NEW 2026-07-11] Tilda — Shih Tzu x Poodle (Miniature), not stated, Female
-- **URL:** https://www.petrescue.com.au/listings/1203263
-- **Shelter:** Guardian Angels Animal Rescue Incorporated (Running Stream, NSW)
-- **Status:** on-hold · **Fee:** $1,500.00 · **Size:** Small
-- **date_indexed:** 2026-07-11
-- Female shihpoo (Shih Tzu × Mini Poodle), small, available for $1,500 from Running Stream NSW.  _(verify drive time)_
-
 ### [NEW 2026-07-07] Cheeky Boy — Bichon Frise x Poodle (Toy) Mix, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1202467
 - **Shelter:** Ozzi Hearts 4 Paws (San Remo, NSW)
@@ -74,7 +74,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** PAWS (Providing Animals with Support) (Sydney Metropolitan area)
 - **Status:** available · **Fee:** not stated · **Size:** Toy
 - **date_indexed:** 2026-07-05
-- Female malshi (Maltese x Shih Tzu), toy-sized, approx 2 years old, available in Sydney NSW via PAWS.
+- Toy Malshi (Maltese x Shih Tzu) female, both parent breeds low-shed, in foster care via PAWS.
 
 ### [NEW 2026-06-26] Snowball - 9 Year Old Maltese X — Maltese Mix, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1200348
