@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-07-21
+- **Last refreshed:** 2026-07-24
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -67,14 +67,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** PAWS (Providing Animals with Support) (Sydney Metropolitan area)
 - **Status:** available · **Fee:** not stated · **Size:** Toy
 - **date_indexed:** 2026-07-05
-- Toy Maltese x Shih Tzu female, ~2 years, at PAWS foster care; qualifying malshi cross.
-
-### [NEW 2026-06-26] Snowball - 9 Year Old Maltese X — Maltese Mix, not stated, Female
-- **URL:** https://www.petrescue.com.au/listings/1200348
-- **Shelter:** Dog Rescue Newcastle (Valentine, NSW)
-- **Status:** on-hold · **Fee:** $400.00 · **Size:** Small
-- **date_indexed:** 2026-06-26
-- Female Maltese mix (second parent unstated), small, Valentine NSW near Newcastle; $400.  _(verify coat/breed)_
+- Malshi (Maltese x Shih Tzu), toy-sized; both parent breeds are low-shedding, low-odour.
 
 ### [NEW 2026-06-25] Benny & Toko — Shih Tzu x Maltese, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1200245
