@@ -1,15 +1,18 @@
 """Tests for the pipeline's multi-page collection loop."""
 from __future__ import annotations
 
+from copy import deepcopy
 import json
 import os
+import stat
 import tempfile
 import types
 import unittest
 from datetime import datetime
 from unittest import mock
 
-from src import manifest, pipeline, store
+from src import manifest, render, store
+import src.pipeline as testee
 from src.fetch import FetchError, FetchResult
 from src.parsers.base import Listing, ParseError
 
@@ -40,8 +43,8 @@ class PaginationLoopTest(unittest.TestCase):
         a, b, c = Listing(url="https://x/1"), Listing(url="https://x/2"), Listing(url="https://x/3")
         mod = _module({"p1": ([a, b], "p2"), "p2": ([b, c], None)})
         state = store.empty_state()
-        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)):
-            res = pipeline._collect_source({"name": "Fake", "listing_url": "p1"}, mod, "p1", state, "TS")
+        with mock.patch.object(testee, "fetch", side_effect=lambda u, **k: _fr(u)):
+            res = testee._collect_source({"name": "Fake", "listing_url": "p1"}, mod, "p1", state, "TS")
         self.assertEqual(res.status, "OK")
         self.assertEqual(res.n_pages, 2)
         self.assertEqual(res.n_cards, 3)  # b deduped across pages
@@ -51,8 +54,8 @@ class PaginationLoopTest(unittest.TestCase):
     def test_stops_on_empty_page(self):
         """A first page with zero cards ends as EMPTY_OK without paging further."""
         mod = _module({"p1": ([], "p2"), "p2": ([Listing(url="https://x/9")], None)})
-        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)):
-            res = pipeline._collect_source({"name": "F", "listing_url": "p1"}, mod, "p1", store.empty_state(), "TS")
+        with mock.patch.object(testee, "fetch", side_effect=lambda u, **k: _fr(u)):
+            res = testee._collect_source({"name": "F", "listing_url": "p1"}, mod, "p1", store.empty_state(), "TS")
         self.assertEqual(res.status, "EMPTY_OK")
         self.assertEqual(res.n_pages, 1)
 
@@ -60,8 +63,8 @@ class PaginationLoopTest(unittest.TestCase):
         """A first-page fetch error yields FETCH_ERROR and no paging."""
         def boom(url, **kwargs):
             raise FetchError("nope")
-        with mock.patch.object(pipeline, "fetch", side_effect=boom):
-            res = pipeline._collect_source({"name": "F", "listing_url": "p1"}, _module({}), "p1", store.empty_state(), "TS")
+        with mock.patch.object(testee, "fetch", side_effect=boom):
+            res = testee._collect_source({"name": "F", "listing_url": "p1"}, _module({}), "p1", store.empty_state(), "TS")
         self.assertEqual(res.status, "FETCH_ERROR")
 
     def test_detail_error_recorded_but_status_ok(self):
@@ -75,15 +78,14 @@ class PaginationLoopTest(unittest.TestCase):
             parse_detail=bad_detail,
         )
         state = store.empty_state()
-        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)):
-            res = pipeline._collect_source({"name": "F", "listing_url": "p1"}, mod, "p1", state, "TS")
+        with mock.patch.object(testee, "fetch", side_effect=lambda u, **k: _fr(u)):
+            res = testee._collect_source({"name": "F", "listing_url": "p1"}, mod, "p1", state, "TS")
         self.assertEqual(res.status, "OK")
         self.assertIn("detail fetch/parse failure", res.error or "")
         self.assertIn("https://x/1", state["listings"])
 
     def test_new_card_records_source_and_parsed_shelter(self):
-        """A new card's entry keeps the config source name and the shelter
-        parse_detail supplies as separate fields — neither collapses into the other."""
+        """A new card keeps its config source separate from its parsed shelter."""
         mod = types.SimpleNamespace(
             SOURCE_KIND="fake",
             parse_list=lambda body: [Listing(url="https://x/1")] if body == "p1" else [],
@@ -91,8 +93,8 @@ class PaginationLoopTest(unittest.TestCase):
             parse_detail=lambda body, listing: setattr(listing, "shelter", "Real Shelter Inc") or listing,
         )
         state = store.empty_state()
-        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)):
-            pipeline._collect_source(
+        with mock.patch.object(testee, "fetch", side_effect=lambda u, **k: _fr(u)):
+            testee._collect_source(
                 {"name": "Some Aggregator Search", "listing_url": "p1"}, mod, "p1", state, "TS")
         entry = state["listings"]["https://x/1"]
         self.assertEqual(entry["source"], "Some Aggregator Search")
@@ -105,9 +107,9 @@ class PaginationLoopTest(unittest.TestCase):
             parse_list=lambda body: [Listing(url="https://x/" + str(len(body)))],
             next_page_url=lambda body, current: body + "x",
         )
-        with mock.patch.object(pipeline, "MAX_PAGES", 3), \
-             mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)):
-            res = pipeline._collect_source({"name": "F", "listing_url": "p"}, mod, "p", store.empty_state(), "TS")
+        with mock.patch.object(testee, "MAX_PAGES", 3), \
+             mock.patch.object(testee, "fetch", side_effect=lambda u, **k: _fr(u)):
+            res = testee._collect_source({"name": "F", "listing_url": "p"}, mod, "p", store.empty_state(), "TS")
         self.assertEqual(res.n_pages, 3)
         self.assertIn("MAX_PAGES", res.error or "")
 
@@ -130,8 +132,7 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         return entry
 
     def test_status_refreshed_and_confirmed(self):
-        """A qualified dog's detail page is re-fetched, its status updated, and
-        it is left unflagged (confirmed still live)."""
+        """A successful detail recheck refreshes status and confirms the dog is live."""
         state = store.empty_state()
         state["listings"]["https://x/1"] = self._qualified_entry("https://x/1")
 
@@ -140,9 +141,9 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
             return listing
 
         mod = types.SimpleNamespace(parse_detail=parse_detail)
-        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
-             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            flagged = pipeline._recheck_qualified_details(state, "TS")
+        with mock.patch.object(testee, "fetch", side_effect=lambda u, **k: _fr(u)), \
+             mock.patch.object(testee.registry, "by_source_kind", return_value=mod):
+            flagged = testee._recheck_qualified_details(state, "TS")
         self.assertEqual(flagged, [])
         self.assertEqual(state["listings"]["https://x/1"]["status"], "on-hold")
         # A confirmed detail recheck counts as a sighting, so last_seen advances.
@@ -158,15 +159,13 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
             return listing
 
         mod = types.SimpleNamespace(parse_detail=parse_detail)
-        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
-             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            pipeline._recheck_qualified_details(state, "TS")
+        with mock.patch.object(testee, "fetch", side_effect=lambda u, **k: _fr(u)), \
+             mock.patch.object(testee.registry, "by_source_kind", return_value=mod):
+            testee._recheck_qualified_details(state, "TS")
         self.assertEqual(state["listings"]["https://x/1"]["shelter"], "RSPCA Illawarra Shelter")
 
     def test_confirming_fine_clears_a_stale_recheck_flag(self):
-        """A dog flagged maybe_adopted (e.g. its detail page briefly 404'd on a
-        prior run) whose own detail page now resolves as not-adopted has its
-        flag and reason cleared, not left flagged."""
+        """A live recheck clears a stale maybe-adopted flag and its reason."""
         state = store.empty_state()
         state["listings"]["https://x/1"] = self._qualified_entry(
             "https://x/1", recheck="maybe_adopted", recheck_reason="http_gone")
@@ -176,9 +175,9 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
             return listing
 
         mod = types.SimpleNamespace(parse_detail=parse_detail)
-        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
-             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            flagged = pipeline._recheck_qualified_details(state, "TS")
+        with mock.patch.object(testee, "fetch", side_effect=lambda u, **k: _fr(u)), \
+             mock.patch.object(testee.registry, "by_source_kind", return_value=mod):
+            flagged = testee._recheck_qualified_details(state, "TS")
         self.assertEqual(flagged, [])
         self.assertIsNone(state["listings"]["https://x/1"]["recheck"])
         self.assertIsNone(state["listings"]["https://x/1"]["recheck_reason"])
@@ -194,9 +193,9 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
             return listing
 
         mod = types.SimpleNamespace(parse_detail=parse_detail)
-        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
-             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            flagged = pipeline._recheck_qualified_details(state, "TS")
+        with mock.patch.object(testee, "fetch", side_effect=lambda u, **k: _fr(u)), \
+             mock.patch.object(testee.registry, "by_source_kind", return_value=mod):
+            flagged = testee._recheck_qualified_details(state, "TS")
         self.assertEqual(len(flagged), 1)
         self.assertEqual(state["listings"]["https://x/1"]["recheck"], "maybe_adopted")
         self.assertEqual(state["listings"]["https://x/1"]["recheck_reason"], "status_adopted")
@@ -213,9 +212,9 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
             raise FetchError("404", status=404)
 
         mod = types.SimpleNamespace(parse_detail=lambda body, listing: listing)
-        with mock.patch.object(pipeline, "fetch", side_effect=boom), \
-             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            flagged = pipeline._recheck_qualified_details(state, "TS")
+        with mock.patch.object(testee, "fetch", side_effect=boom), \
+             mock.patch.object(testee.registry, "by_source_kind", return_value=mod):
+            flagged = testee._recheck_qualified_details(state, "TS")
         self.assertEqual(len(flagged), 1)
         self.assertEqual(state["listings"]["https://x/1"]["recheck"], "maybe_adopted")
         self.assertEqual(state["listings"]["https://x/1"]["recheck_reason"], "http_gone")
@@ -233,15 +232,14 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
             raise ParseError("drift")
 
         mod = types.SimpleNamespace(parse_detail=bad_detail)
-        with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)), \
-             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            flagged = pipeline._recheck_qualified_details(state, "TS")
+        with mock.patch.object(testee, "fetch", side_effect=lambda u, **k: _fr(u)), \
+             mock.patch.object(testee.registry, "by_source_kind", return_value=mod):
+            flagged = testee._recheck_qualified_details(state, "TS")
         self.assertEqual(len(flagged), 1)
         self.assertEqual(state["listings"]["https://x/1"]["recheck_reason"], "detail_unparseable")
 
     def test_transient_fetch_error_does_not_flag_or_clear(self):
-        """A 403/timeout is not evidence: it neither flags a clean dog nor clears
-        an existing flag, so an outage day can't mass-mark dogs adopted."""
+        """A transient 403/timeout neither flags a dog nor clears its existing flag."""
         state = store.empty_state()
         clean = self._qualified_entry("https://x/clean")
         already = self._qualified_entry(
@@ -253,9 +251,9 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
             raise FetchError("403 forbidden", status=403)
 
         mod = types.SimpleNamespace(parse_detail=lambda body, listing: listing)
-        with mock.patch.object(pipeline, "fetch", side_effect=boom), \
-             mock.patch.object(pipeline.registry, "by_source_kind", return_value=mod):
-            flagged = pipeline._recheck_qualified_details(state, "TS")
+        with mock.patch.object(testee, "fetch", side_effect=boom), \
+             mock.patch.object(testee.registry, "by_source_kind", return_value=mod):
+            flagged = testee._recheck_qualified_details(state, "TS")
         self.assertEqual(flagged, [])
         self.assertIsNone(clean["recheck"])  # clean dog not newly flagged
         self.assertEqual(already["recheck"], "maybe_adopted")  # existing flag kept
@@ -268,8 +266,8 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
             "https://x/rejected", verdict=store.REJECTED)
         state["listings"]["https://x/removed"] = self._qualified_entry(
             "https://x/removed", removed=True)
-        with mock.patch.object(pipeline, "fetch") as fetch_mock:
-            flagged = pipeline._recheck_qualified_details(state, "TS")
+        with mock.patch.object(testee, "fetch") as fetch_mock:
+            flagged = testee._recheck_qualified_details(state, "TS")
         fetch_mock.assert_not_called()
         self.assertEqual(flagged, [])
 
@@ -278,9 +276,9 @@ class RecheckQualifiedDetailsTest(unittest.TestCase):
         state = store.empty_state()
         state["listings"]["https://x/1"] = self._qualified_entry(
             "https://x/1", source_kind="browser")
-        with mock.patch.object(pipeline, "fetch") as fetch_mock, \
-             mock.patch.object(pipeline.registry, "by_source_kind", return_value=None):
-            flagged = pipeline._recheck_qualified_details(state, "TS")
+        with mock.patch.object(testee, "fetch") as fetch_mock, \
+             mock.patch.object(testee.registry, "by_source_kind", return_value=None):
+            flagged = testee._recheck_qualified_details(state, "TS")
         fetch_mock.assert_not_called()
         self.assertEqual(flagged, [])
 
@@ -315,30 +313,26 @@ class CollectRecheckIntegrationTest(unittest.TestCase):
             "last_seen": "20260101-000000",
         }
         store.save_state(state_path, state)
-        with mock.patch.object(pipeline.registry, "resolve",
+        with mock.patch.object(testee.registry, "resolve",
                                return_value=(list_module, "https://fake/list")), \
-             mock.patch.object(pipeline.registry, "by_source_kind", return_value=detail_module):
-            pipeline.collect(shelters_path, state_path, out_dir)
+             mock.patch.object(testee.registry, "by_source_kind", return_value=detail_module):
+            testee.collect(shelters_path, state_path, out_dir)
         return store.load_state(state_path)["listings"]["https://fake/dog/1"]
 
     def test_card_missing_from_list_but_detail_confirms_not_flagged(self):
-        """A qualified dog absent from its shelter's list this run, but whose
-        own detail page still resolves as on-hold (not adopted), is NOT
-        flagged maybe_adopted and gets its status refreshed."""
+        """A live on-hold detail page overrides a missing list card without flagging adoption."""
         list_module = types.SimpleNamespace(
             SOURCE_KIND="fake", parse_list=lambda body: [])  # the card is gone
         detail_module = types.SimpleNamespace(
             parse_detail=lambda body, listing: (setattr(listing, "status", "on-hold"), listing)[1])
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(pipeline, "fetch", side_effect=lambda u, **k: _fr(u)):
+            with mock.patch.object(testee, "fetch", side_effect=lambda u, **k: _fr(u)):
                 final = self._run_collect(tmp, list_module, detail_module)
         self.assertIsNone(final["recheck"])
         self.assertEqual(final["status"], "on-hold")
 
     def test_card_missing_from_list_and_detail_dead_is_flagged(self):
-        """The exact case flag_disappeared existed for: a qualified dog gone from
-        its list AND whose detail URL now 404s is flagged http_gone by the
-        detail recheck alone."""
+        """A missing list card plus a 404 detail page is flagged as http_gone."""
         list_module = types.SimpleNamespace(
             SOURCE_KIND="fake", parse_list=lambda body: [])  # the card is gone
 
@@ -349,7 +343,7 @@ class CollectRecheckIntegrationTest(unittest.TestCase):
 
         detail_module = types.SimpleNamespace(parse_detail=lambda body, listing: listing)
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(pipeline, "fetch", side_effect=fetch_side_effect):
+            with mock.patch.object(testee, "fetch", side_effect=fetch_side_effect):
                 final = self._run_collect(tmp, list_module, detail_module)
         self.assertEqual(final["recheck"], "maybe_adopted")
         self.assertEqual(final["recheck_reason"], "http_gone")
@@ -384,7 +378,7 @@ class BrowserStaleCollectTest(unittest.TestCase):
                 }
             store.save_state(state_path, state)
 
-            pipeline.collect(shelters_path, state_path, out_dir)
+            testee.collect(shelters_path, state_path, out_dir)
             final = store.load_state(state_path)["listings"]
         self.assertEqual(final["stale"]["recheck_reason"], "stale_browser")
         self.assertIsNone(final["fresh"]["recheck"])
@@ -406,13 +400,158 @@ class CollectStatsTest(unittest.TestCase):
             self._source(manifest.STATUS_FETCH_ERROR),
             self._source(manifest.STATUS_NEEDS_BROWSER),
         ]
-        stats = pipeline._collect_stats(sources, n_maybe_adopted=1, n_pending=3)
+        stats = testee._collect_stats(sources, n_maybe_adopted=1, n_pending=3)
         self.assertEqual(stats["n_new"], 2)
         self.assertEqual(stats["n_empty"], 2)
         self.assertEqual(stats["n_errors"], 2)  # PARSE + FETCH only, not the 2 empties
         self.assertEqual(stats["n_needs_browser"], 1)
         self.assertEqual(stats["n_maybe_adopted"], 1)
         self.assertEqual(stats["n_pending"], 3)
+
+
+class AtomicIndexPersistenceTest(unittest.TestCase):
+    def test_write_failure_keeps_existing_index_and_removes_temp_file(self):
+        """A temporary write error leaves the prior index intact for recovery."""
+        with tempfile.TemporaryDirectory() as tmp:
+            index_path = os.path.join(tmp, "dog-index.md")
+            with open(index_path, "w", encoding="utf-8") as handle:
+                handle.write("previous index\n")
+            real_fdopen = os.fdopen
+
+            class FailingWriter:
+                def __init__(self, fd: int):
+                    self._handle = real_fdopen(fd, "w", encoding="utf-8")
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *unused):
+                    self._handle.close()
+
+                def write(self, markdown: str) -> None:
+                    raise OSError("write failed")
+
+                def flush(self) -> None:
+                    raise AssertionError("write failure must skip flush")
+
+            with mock.patch.object(testee.os, "fdopen", side_effect=lambda fd, *args, **kwargs: FailingWriter(fd)):
+                with self.assertRaisesRegex(OSError, "write failed"):
+                    testee._save_index(index_path, "new index\n")
+
+            with open(index_path, encoding="utf-8") as handle:
+                self.assertEqual(handle.read(), "previous index\n")
+            self.assertEqual(os.listdir(tmp), ["dog-index.md"])
+
+    def test_replace_failure_keeps_existing_index_and_removes_temp_file(self):
+        """A failed atomic replacement preserves the readable prior index for recovery."""
+        with tempfile.TemporaryDirectory() as tmp:
+            index_path = os.path.join(tmp, "dog-index.md")
+            with open(index_path, "w", encoding="utf-8") as handle:
+                handle.write("previous index\n")
+
+            with mock.patch.object(testee.os, "replace", side_effect=OSError("replace failed")):
+                with self.assertRaisesRegex(OSError, "replace failed"):
+                    testee._save_index(index_path, "new index\n")
+
+            with open(index_path, encoding="utf-8") as handle:
+                self.assertEqual(handle.read(), "previous index\n")
+            self.assertEqual(os.listdir(tmp), ["dog-index.md"])
+
+    def test_replacement_preserves_existing_index_mode(self):
+        """Atomic replacement retains the deployment's existing index permissions."""
+        with tempfile.TemporaryDirectory() as tmp:
+            index_path = os.path.join(tmp, "dog-index.md")
+            with open(index_path, "w", encoding="utf-8") as handle:
+                handle.write("previous index\n")
+            os.chmod(index_path, 0o664)
+
+            testee._save_index(index_path, "new index\n")
+
+            self.assertEqual(stat.S_IMODE(os.stat(index_path).st_mode), 0o664)
+
+
+class ApplyTest(unittest.TestCase):
+    def _write_index(self, path: str) -> str:
+        """Create a minimal machine-managed index and return its original bytes."""
+        markdown = (
+            "# Dogs\n\n"
+            "- **Last refreshed:** 2026-01-01\n\n"
+            f"{render.BEGIN_MARKER}\n\n_No current candidates._\n\n{render.END_MARKER}\n"
+        )
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(markdown)
+        return markdown
+
+    def test_render_failure_leaves_state_and_index_unchanged(self):
+        """Rendering must succeed before either authoritative output is persisted."""
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = os.path.join(tmp, "state.json")
+            verdicts_path = os.path.join(tmp, "verdicts.json")
+            index_path = os.path.join(tmp, "dog-index.md")
+            state = store.empty_state()
+            store.upsert_listing(state, Listing(url="https://example.test/dog"), "20260101-000000")
+            store.save_state(state_path, state)
+            with open(verdicts_path, "w", encoding="utf-8") as handle:
+                json.dump([{"url": "https://example.test/dog", "verdict": "qualified"}], handle)
+            with open(state_path, "rb") as handle:
+                original_state = handle.read()
+            original_index = self._write_index(index_path).encode()
+
+            with mock.patch.object(testee.render, "render_index", side_effect=ValueError("bad index")):
+                with self.assertRaisesRegex(ValueError, "bad index"):
+                    testee.apply(state_path, verdicts_path, index_path)
+
+            with open(state_path, "rb") as handle:
+                self.assertEqual(handle.read(), original_state)
+            with open(index_path, "rb") as handle:
+                self.assertEqual(handle.read(), original_index)
+
+    def test_successful_apply_updates_state_and_index(self):
+        """A complete in-memory render commits both independently atomic outputs."""
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = os.path.join(tmp, "state.json")
+            verdicts_path = os.path.join(tmp, "verdicts.json")
+            index_path = os.path.join(tmp, "dog-index.md")
+            store.save_state(state_path, store.empty_state())
+            with open(verdicts_path, "w", encoding="utf-8") as handle:
+                json.dump([{"url": "https://example.test/dog", "verdict": "qualified"}], handle)
+            self._write_index(index_path)
+
+            self.assertEqual(testee.apply(state_path, verdicts_path, index_path), 1)
+
+            entry = store.load_state(state_path)["listings"]["https://example.test/dog"]
+            self.assertEqual(entry["verdict"], store.QUALIFIED)
+            with open(index_path, encoding="utf-8") as handle:
+                self.assertIn("https://example.test/dog", handle.read())
+
+    def test_deferred_verdict_leaves_persisted_recheck_unchanged(self):
+        """The full apply path retains an inconclusive recheck exactly for retry."""
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = os.path.join(tmp, "state.json")
+            verdicts_path = os.path.join(tmp, "verdicts.json")
+            index_path = os.path.join(tmp, "dog-index.md")
+            state = store.empty_state()
+            store.upsert_listing(state, Listing(url="https://example.test/recheck", name="Fido"), "20260101-000000")
+            entry = state["listings"]["https://example.test/recheck"]
+            entry.update({
+                "verdict": store.QUALIFIED,
+                "summary": "Keep this summary.",
+                "tags": ["verify coat/breed"],
+                "recheck": "maybe_adopted",
+                "recheck_reason": "stale_browser",
+            })
+            expected_entry = deepcopy(entry)
+            store.save_state(state_path, state)
+            with open(verdicts_path, "w", encoding="utf-8") as handle:
+                json.dump([{"url": entry["url"], "verdict": store.DEFERRED}], handle)
+            self._write_index(index_path)
+
+            testee.apply(state_path, verdicts_path, index_path)
+
+            self.assertEqual(
+                store.load_state(state_path)["listings"]["https://example.test/recheck"],
+                expected_entry,
+            )
 
 
 if __name__ == "__main__":

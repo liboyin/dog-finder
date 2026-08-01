@@ -90,8 +90,12 @@ prose Markdown:
   duplicate pending verdict), the service exits before applying or committing state. A deferred
   outcome counts only for a pending re-check and is deliberately a no-op, so an unreachable
   browser cannot silently mutate or discard a dog. Browser discoveries without the required
-  `source_kind: "browser"` lifecycle metadata also fail validation. A broken judge went unnoticed
-  for 12 days (2026-06-22 to 2026-07-04, an expired local login) before this check existed.
+  `source_kind: "browser"` lifecycle metadata also fail validation. Deterministic apply and index
+  rendering failures are equally fatal: state and index are prepared before persistence, then each
+  file is atomically replaced. They are not a cross-file transaction, so a crash between the two
+  replacements can leave an observable mismatch; that failure propagates and failed runs never
+  enter automatic Git mutation. A broken judge went unnoticed for 12 days (2026-06-22 to
+  2026-07-04, an expired local login) before this check existed.
 - **The unattended judge bypasses Codex approvals and sandboxing.** Codex currently requires
   `--dangerously-bypass-approvals-and-sandbox` for noninteractive Playwright MCP calls. This is a
   deliberate owner-approved tradeoff to retain browser-only shelter coverage; scraped content can

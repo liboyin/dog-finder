@@ -166,7 +166,7 @@ but avoid repository-wide syntax churn.
 | WP | Title | Depends on | Status |
 |---|---|---|---|
 | WP1 | Make the verdict contract complete and represent deferred work | — | DONE |
-| WP2 | Make apply fail-fast and keep outputs consistent | WP1 | TODO |
+| WP2 | Make apply fail-fast and keep outputs consistent | WP1 | DONE |
 | WP3 | Use real Ubuntu network readiness in the user service | — | TODO |
 | WP4 | Apply scoped Python 3.14 cleanup and close HTTP errors | WP1 | TODO |
 | WP5 | Adversarial review and isolated end-to-end verification | WP1–WP4 | TODO |

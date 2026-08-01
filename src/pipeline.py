@@ -26,7 +26,9 @@ import argparse
 import json
 import logging
 import os
+import stat
 import subprocess
+import tempfile
 import time
 from datetime import datetime, timedelta
 
@@ -445,34 +447,68 @@ def _load_verdicts(path: str) -> list[dict]:
     return data
 
 
+def _save_index(path: str, markdown: str) -> None:
+    """Atomically replace the rendered index with complete Markdown.
+
+    Args:
+        path: Destination path for data/dog-index.md.
+        markdown: Fully rendered index content to persist.
+
+    Raises:
+        OSError: If the temporary file cannot be written or replaced.
+    """
+    directory = os.path.dirname(path) or "."
+    mode = stat.S_IMODE(os.stat(path).st_mode)
+    fd, tmp_path = tempfile.mkstemp(dir=directory, prefix=".index-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            out.write(markdown)
+            out.flush()
+        os.chmod(tmp_path, mode)
+        os.replace(tmp_path, path)
+    except BaseException:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise
+
+
 def apply(state_path: str, verdicts_path: str, index_path: str) -> int:
     """Run the apply phase: merge verdicts and re-render the index.
 
     Args:
         state_path: Path to data/state.json.
         verdicts_path: Path to the LLM-produced verdicts.json.
-        index_path: Path to data/dog-index.md (re-rendered in place).
+        index_path: Path to data/dog-index.md (atomically replaced after state).
 
     Returns:
         The number of qualified, non-removed listings now in the index.
+
+    Raises:
+        OSError: If an input or either atomic output cannot be read or written.
+        ValueError: If the existing index cannot be rendered.
+
+    The state and index are prepared completely in memory before either file is
+    persisted. They are separately atomically replaced, not committed as a
+    cross-file transaction: an interruption after state replacement but before
+    index replacement can leave a visible mismatch that propagates to the
+    launcher and is never automatically committed.
     """
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     state = store.load_state(state_path)
     verdicts = _load_verdicts(verdicts_path) if os.path.exists(verdicts_path) else []
+    with open(index_path, encoding="utf-8") as handle:
+        current_md = handle.read()
     if not verdicts:
         logger.warning("apply: no verdicts found at %s; re-rendering from existing state", verdicts_path)
     else:
         logger.info("apply: merging %d verdict(s) into state", len(verdicts))
     store.apply_verdicts(state, verdicts, ts)
-    store.save_state(state_path, state)
 
     qualified = store.qualified_for_render(state)
     logger.info("apply: index now lists %d qualified dog(s)", len(qualified))
-    with open(index_path, encoding="utf-8") as handle:
-        current_md = handle.read()
     updated = render.render_index(current_md, qualified, datetime.now().strftime("%Y-%m-%d"))
-    with open(index_path, "w", encoding="utf-8") as out:
-        out.write(updated)
+    store.save_state(state_path, state)
+    _save_index(index_path, updated)
     return len(qualified)
 
 

@@ -95,12 +95,15 @@ echo "$(date '+%F %T %Z') invoking Codex to judge pending dogs; live events in $
   --output-schema "$SCHEMA" \
   --output-last-message "$VERDICTS" \
   --json "$PROMPT" </dev/null > "$STREAM" 2>>"$LOG"
-CODE=$?
+if [ $? -ne 0 ]; then
+  echo "$(date '+%F %T %Z') FATAL: Codex exited non-zero; see $STREAM" >> "$LOG"
+  exit 1
+fi
 
 if [ -s "$VERDICTS" ] && "$PYTHON_BIN" "$DIR/src/write_report.py" "$VERDICTS" "$REPORT" "$PENDING" >> "$LOG" 2>&1; then
   :
 else
-  echo "$(date '+%F %T %Z') FATAL: Codex produced no complete valid verdict response (exit $CODE); see $STREAM" >> "$LOG"
+  echo "$(date '+%F %T %Z') FATAL: Codex produced no complete valid verdict response; see $STREAM" >> "$LOG"
   exit 1
 fi
 
@@ -108,8 +111,11 @@ echo "$(date '+%F %T %Z') apply verdicts -> $INDEX" >> "$LOG"
 "$PYTHON_BIN" -m src.pipeline apply \
   --state "$STATE" \
   --verdicts "$VERDICTS" \
-  --index "$INDEX" >> "$LOG" 2>&1 \
-  || echo "$(date '+%F %T %Z') WARN: apply exited non-zero; index may be stale" >> "$LOG"
+  --index "$INDEX" >> "$LOG" 2>&1
+if [ $? -ne 0 ]; then
+  echo "$(date '+%F %T %Z') FATAL: apply failed; no Git operations were attempted" >> "$LOG"
+  exit 1
+fi
 
 if [ -n "$(git status --porcelain -- "$INDEX" "$STATE")" ]; then
   DECISION="$("$PYTHON_BIN" -m src.pipeline index-check --index "$INDEX" 2>>"$LOG")"
@@ -142,5 +148,5 @@ if [ -d "$RUNS" ]; then
     >> "$LOG" 2>&1 || echo "$(date '+%F %T %Z') WARN: run-artifact retention sweep failed" >> "$LOG"
 fi
 
-echo "===== run finished $(date '+%F %T %Z') (exit $CODE) =====" >> "$LOG"
-exit "$CODE"
+echo "===== run finished $(date '+%F %T %Z') (exit 0) =====" >> "$LOG"
+exit 0
