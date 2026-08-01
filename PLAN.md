@@ -11,8 +11,8 @@ The project now runs on Ubuntu 26.04 with system Python 3.14, Codex using
 `gpt-5.6-luna`, and a pinned Playwright MCP driving headless Firefox. The
 migration is structurally sound, but its adversarial review found six runtime
 and data-integrity risks. This plan resolves all six and performs the final
-end-to-end verification that the committed completeness gate has not yet
-received.
+end-to-end verification for the committed completeness gate, which has now
+passed.
 
 In scope:
 
@@ -61,9 +61,14 @@ changed:
   on this host. `/usr/bin/nm-online` is installed.
 - The retained run `runs/20260801-110350` completed before the final coverage
   gate was committed. It contains 191 pending inputs but only 11 verdict
-  objects, while its prose report claims 181 rejections. That run is evidence
-  that the final committed contract still needs a fresh live test, not evidence
-  that it already passed one.
+  objects, while its prose report claims 181 rejections. It showed why a fresh
+  live test under the final committed contract was necessary.
+- The isolated WP5 refresh completed at `2026-08-02 01:54:41 AEST` with exit
+  zero: 202 pending URLs received 202 rejected verdicts, with zero qualified,
+  adopted, deferred, or extra-browser outcomes. It recorded 174 successful
+  Playwright calls and `turn.completed`; validation, apply, and index/state
+  consistency checks passed while the primary worktree and remote remained
+  untouched.
 - The systemd timer is not currently installed in the user manager. Do not
   install it merely to execute this plan.
 
@@ -169,7 +174,7 @@ but avoid repository-wide syntax churn.
 | WP2 | Make apply fail-fast and keep outputs consistent | WP1 | DONE |
 | WP3 | Use real Ubuntu network readiness in the user service | — | DONE |
 | WP4 | Apply scoped Python 3.14 cleanup and close HTTP errors | WP1 | DONE |
-| WP5 | Adversarial review and isolated end-to-end verification | WP1–WP4 | TODO |
+| WP5 | Adversarial review and isolated end-to-end verification | WP1–WP4 | DONE |
 
 WP1 and WP2 protect state and must land before any new paid/live judge run. WP3
 and WP4 may be implemented independently after WP1, but the simplest execution
