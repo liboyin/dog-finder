@@ -27,6 +27,7 @@ logger = logging.getLogger("dog_finder.store")
 PENDING = "pending"
 QUALIFIED = "qualified"
 REJECTED = "rejected"
+DEFERRED = "deferred"
 
 
 def empty_state() -> dict:
@@ -243,7 +244,7 @@ def qualified_for_render(state: dict) -> list[dict]:
     return sorted(entries, key=lambda e: e.get("first_seen") or "", reverse=True)
 
 
-def _valid_verdict_url(url) -> bool:
+def valid_verdict_url(url: object) -> bool:
     """True if a verdict URL is a safe http(s) key with no injection characters.
 
     A verdict for an unknown URL creates a new state entry keyed on it and is
@@ -253,6 +254,12 @@ def _valid_verdict_url(url) -> bool:
     (``[``/``]``) — the last would let ``…[text](evil)…`` render as a disguised
     link. Parentheses stay allowed (legal in real URLs and inert without a
     preceding ``]``).
+
+    Args:
+        url: The untrusted response value proposed as a listing URL.
+
+    Returns:
+        True when ``url`` is safe to use as a state key and Markdown link.
     """
     if not isinstance(url, str):
         return False
@@ -274,6 +281,7 @@ def apply_verdicts(state: dict, verdicts: list[dict], ts: str) -> None:
     Each verdict is a dict with at least ``url`` and ``verdict``. Browser-found
     dogs (URLs not yet in state) are created from the verdict's fields. A verdict
     may also set ``removed`` (e.g. confirmed adopted) and ``summary``/``tags``.
+    A deferred verdict is an intentional no-op for an inconclusive re-check.
     A verdict whose ``url`` is not a clean http(s) URL is ignored (logged), and
     every stored string field is capped at ``MAX_FIELD_LEN`` — the LLM output is
     untrusted input that keys and populates the human-facing index.
@@ -287,15 +295,17 @@ def apply_verdicts(state: dict, verdicts: list[dict], ts: str) -> None:
         url = verdict.get("url")
         if not url:
             continue
-        if not _valid_verdict_url(url):
+        if not valid_verdict_url(url):
             logger.warning("apply_verdicts: ignoring verdict with invalid url %r", url)
+            continue
+        if verdict.get("verdict") == DEFERRED:
             continue
         key = canonical(url)
         entry = state["listings"].get(key)
         if entry is None:
             entry = {
                 "url": url,
-                "source_kind": verdict.get("source_kind", "browser"),
+                "source_kind": "browser",
                 "source": _cap(verdict.get("source")),
                 "first_seen": ts,
                 "removed": False,

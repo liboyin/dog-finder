@@ -58,8 +58,11 @@ prose Markdown:
   merges the LLM's verdicts into state and re-renders the index.
 - **The LLM does only judgment.** It decides whether a breed/cross meets the low-shed criteria,
   writes the ≤25-word summaries, resolves geo-borderline cases, and confirms vanished dogs as
-  adopted — emitting a single `verdicts.json`. It never hand-edits the index or state; code
-  renders `data/dog-index.md` from `state.json`, touching only the region between the
+  adopted — emitting a single `verdicts.json`. The response has exactly one explicit outcome for
+  every pending URL; an inconclusive `maybe_adopted` browser re-check may be `deferred`, which
+  leaves its state entry unchanged for retry. Browser discoveries must carry browser lifecycle
+  metadata (`source_kind: "browser"`). It never hand-edits the index or state; code renders
+  `data/dog-index.md` from `state.json`, touching only the region between the
   `<!-- DOGS:BEGIN/END -->` markers so human-authored prose is preserved.
 - **`source` and `shelter` are distinct.** `source` records *what found* a dog — the config
   entry that surfaced it, which for the aggregator searches is a query like "PetRescue NSW poodle
@@ -84,9 +87,11 @@ prose Markdown:
   a silently-broken parser can't quietly drop a shelter. A human fixes the parser out-of-band and
   commits — the failure is visible, not swallowed. The same applies to the judge itself: if it
   produces no complete, valid `verdicts.json` response (crash, auth failure, timeout, missing, or
-  duplicate pending verdict), the service exits before applying or committing state. A broken judge went
-  unnoticed for 12 days (2026-06-22 to 2026-07-04, an expired local login) before this check
-  existed.
+  duplicate pending verdict), the service exits before applying or committing state. A deferred
+  outcome counts only for a pending re-check and is deliberately a no-op, so an unreachable
+  browser cannot silently mutate or discard a dog. Browser discoveries without the required
+  `source_kind: "browser"` lifecycle metadata also fail validation. A broken judge went unnoticed
+  for 12 days (2026-06-22 to 2026-07-04, an expired local login) before this check existed.
 - **The unattended judge bypasses Codex approvals and sandboxing.** Codex currently requires
   `--dangerously-bypass-approvals-and-sandbox` for noninteractive Playwright MCP calls. This is a
   deliberate owner-approved tradeoff to retain browser-only shelter coverage; scraped content can
