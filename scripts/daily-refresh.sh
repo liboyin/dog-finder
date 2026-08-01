@@ -100,7 +100,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-if [ -s "$VERDICTS" ] && "$PYTHON_BIN" "$DIR/src/write_report.py" "$VERDICTS" "$REPORT" "$PENDING" >> "$LOG" 2>&1; then
+if [ -s "$VERDICTS" ] && "$PYTHON_BIN" -m src.write_report "$VERDICTS" "$REPORT" "$PENDING" >> "$LOG" 2>&1; then
   :
 else
   echo "$(date '+%F %T %Z') FATAL: Codex produced no complete valid verdict response; see $STREAM" >> "$LOG"

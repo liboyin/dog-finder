@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -191,30 +190,3 @@ class WriteReportTest(unittest.TestCase):
 
             self.assertEqual(1, result)
             self.assertFalse(report.exists())
-
-    def test_script_invocation_writes_report(self) -> None:
-        """The current Bash launcher can invoke the validator outside package mode."""
-        with tempfile.TemporaryDirectory() as directory:
-            verdicts = Path(directory) / "verdicts.json"
-            report = Path(directory) / "report.txt"
-            pending = Path(directory) / "pending.json"
-            verdicts.write_text(
-                json.dumps(
-                    {
-                        "verdicts": [{"url": "https://example.test/dog", "verdict": "qualified"}],
-                        "report": "Refresh complete.",
-                    }
-                ),
-                encoding="utf-8",
-            )
-            pending.write_text(json.dumps({"pending": [{"url": "https://example.test/dog"}]}), encoding="utf-8")
-
-            result = subprocess.run(
-                [sys.executable, str(Path(testee.__file__)), str(verdicts), str(report), str(pending)],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            self.assertEqual(0, result.returncode, result.stderr)
-            self.assertEqual("Refresh complete.\n", report.read_text(encoding="utf-8"))

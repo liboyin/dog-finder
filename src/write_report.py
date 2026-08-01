@@ -8,14 +8,8 @@ from __future__ import annotations
 import json
 import sys
 from collections import Counter
-from pathlib import Path
 
-try:
-    from src import dedup, store
-except ModuleNotFoundError:
-    import dedup
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from src import store
+from src import dedup, store
 
 
 def _sample_urls(urls: list[str]) -> str:

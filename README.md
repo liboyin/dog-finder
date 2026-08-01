@@ -171,22 +171,26 @@ prose Markdown:
 
 ## Test
 
-The suite is plain `unittest` with no network and no third-party dependencies. From the repo root:
+The suite is plain `unittest` with no network and no third-party dependencies. The supported
+runtime is Ubuntu 26.04's system Python 3.14 (`python3`); the systemd service uses that same
+interpreter. From the repo root:
 
 ```
 python3 -m unittest discover -s tests
 ```
 
-It must pass on the Linux `python3` interpreter used by the systemd service; this is the gate for
-every change. Tests use HTML fixtures under `tests/fixtures/` rather than live fetches.
+It must pass on the Linux Python 3.14 `python3` interpreter used by the systemd service; this is
+the gate for every change. Tests use HTML fixtures under `tests/fixtures/` rather than live
+fetches.
 
 ## Deploy
 
 The job runs **locally only**, as a Linux `systemd --user` timer — never as a cloud routine (see
 *Runs locally via systemd, not the cloud* above). The checkout must be at `~/Code/dog-finder`.
 
-- **Prerequisites:** this Ubuntu 26.04 deployment requires NetworkManager and its
-  `/usr/bin/nm-online` utility, plus Node.js 22 and the headless Firefox Playwright MCP:
+- **Prerequisites:** this Ubuntu 26.04 deployment requires its system Python 3.14 interpreter,
+  NetworkManager and its `/usr/bin/nm-online` utility, plus Node.js 22 and the headless Firefox
+  Playwright MCP:
   `codex mcp add playwright -- npx -y @playwright/mcp@0.0.78 --browser firefox --headless --isolated`.
   Install the matching managed browser runtime with
   `npx -y @playwright/mcp@0.0.78 install-browser firefox`, then set this exact read-oriented

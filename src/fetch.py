@@ -57,7 +57,7 @@ def fetch(url: str, *, timeout: int = DEFAULT_TIMEOUT, retries: int = 1) -> Fetc
     Raises:
         FetchError: If every attempt fails or a non-2xx status is returned.
     """
-    last_error: Exception | None = None
+    last_error: Exception | str | None = None
     last_status: int | None = None
     for attempt in range(retries + 1):
         try:
@@ -74,10 +74,13 @@ def fetch(url: str, *, timeout: int = DEFAULT_TIMEOUT, retries: int = 1) -> Fetc
             # HTTPError is a URLError subclass, so it must be caught first. A
             # permanent 4xx won't change on retry, so stop immediately; other
             # statuses (5xx) fall through to the transient retry path.
-            last_error = error
+            last_error = str(error)
             last_status = error.code
-            if 400 <= error.code < 500:
-                break
+            try:
+                if 400 <= error.code < 500:
+                    break
+            finally:
+                error.close()
             if attempt < retries:
                 time.sleep(RETRY_BACKOFF_S)
         except (urllib.error.URLError, TimeoutError, OSError) as error:
