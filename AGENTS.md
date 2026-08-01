@@ -31,7 +31,7 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 
 # Review Guidelines
 
-Before committing, perform an adversarial review of the changes in a subagent running Fable 5 in plan mode:
+Before committing, perform an adversarial review of the changes in a GPT 5.6 Sol (high thinking) subagent:
 
 - Does it achieve the intended purpose?
 - Is it bug-free?

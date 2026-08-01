@@ -1,5 +1,8 @@
 # PLAN.md — dog-finder improvement plan (execution hand-over)
 
+- **Historical record:** this is the finalized July 2026 Claude/macOS work-plan. Its completed
+  work-package details and operational history are retained for context; current runtime,
+  scheduling, and deployment documentation lives in [`README.md`](README.md).
 - **Finalized:** 2026-07-10. Review evidence is from the 2026-07-05 snapshot (state, index, logs); the daily job has run since, so re-verify specifics like `last_seen` values before relying on them.
 - **Authority:** every decision in §3 was confirmed by the owner. Do not re-open them. If you hit a genuine ambiguity that §3–§5 doesn't cover, **stop and ask the owner** (AGENTS.md meta guideline) — do not guess on contract-level questions.
 - **Audience:** an agent executing one or more work packages (§4) with no other context. Read `AGENTS.md` and `README.md` first; this file assumes both.

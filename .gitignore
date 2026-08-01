@@ -1,5 +1,6 @@
 runs/
 logs/
+.playwright-mcp/
 .venv/
 __pycache__/
 *.pyc

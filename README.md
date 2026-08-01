@@ -27,8 +27,7 @@ The architecture and design decisions below all serve a handful of objectives:
   everything deterministic — fetching, parsing, deduping, state-tracking, rendering — runs in
   Python (system install + stdlib only); the model is invoked only where judgment is unavoidable
   (does this breed/cross qualify, is this borderline location in range, is a vanished dog
-  adopted). This drives the judgment/determinism split in *Architecture* and the budget cap in
-  *Key design decisions*.
+  adopted). This drives the judgment/determinism split in *Architecture*.
 - **Unattended daily operation.** A daily job keeps the index current with no human in the loop
   for the run itself; a person only reads and reviews the result.
 - **The human makes the final call.** The system curates and maintains but never decides which
@@ -72,36 +71,33 @@ prose Markdown:
   two entries with two URLs — an accepted consequence of keying on URL.
 - **JS-rendered shelters use a browser MCP.** Shelters whose listings are JavaScript-rendered
   (`render: js`), or non-PetRescue own-sites with no code parser, are flagged `NEEDS_BROWSER` in
-  the manifest; the LLM drives Playwright / Claude-in-Chrome MCP (typically via a Haiku subagent)
-  for those and judges them alongside the pipeline's candidates.
+  the manifest; Codex drives the configured Playwright MCP with a managed, headless Firefox
+  browser for those and judges them alongside the pipeline's candidates.
 
 ## Key design decisions
 
-- **Runs locally via launchd, not the cloud.** The job is a macOS `launchd` agent
-  (`com.dog-finder.daily-refresh`, 13:00 Australia/Sydney). The cloud "Routines" feature can't
-  reach local files, and the index lives on disk, so the schedule must be local too.
-- **Lives outside `~/Documents`.** macOS TCC blocks launchd agents from reading the Documents
-  folder, which would silently break the unattended run. The project is self-contained under its
-  repo root and references no paths outside it.
+- **Runs locally via systemd, not the cloud.** The job is a Linux `systemd --user` timer
+  (`dog-finder-daily-refresh`, 13:00 Australia/Sydney). The cloud can't reach local files, and
+  the index lives on disk, so the schedule must be local too.
 - **Fail loud, fix externally.** Parsers raise on markup drift; a run records the error per source
   in the manifest, skips that shelter, and continues. "HTTP 200 but 0 cards" is also an error, so
   a silently-broken parser can't quietly drop a shelter. A human fixes the parser out-of-band and
   commits — the failure is visible, not swallowed. The same applies to the judge itself: if it
-  produces no `verdicts.json` at all (crash, auth failure, watchdog kill), the launcher fires a
-  macOS notification rather than relying on someone to notice a stale index — a broken judge went
-  unnoticed for 12 days (2026-06-22 to 2026-07-04, an expired local `claude` login) before this
-  existed, silently re-rendering the same index from unchanged state every run.
-- **A budget cap, not a throttle.** The headless `claude` invocation aborts cleanly at
-  `--max-budget-usd 2.5` rather than being throttled into a multi-hour death-crawl. The figure
-  comes from observed per-run cost (a low-shed run hit US$2.72).
-- **The judge runs under a tool allowlist, not skip-permissions.** The judge reads arbitrary
-  scraped web content, so granting it unrestricted local authority (`--dangerously-skip-permissions`)
-  would give prompt-injection file, shell, and git reach. Instead it runs with a narrow allowlist in
-  `.claude/judge-settings.json` (`Read`, `WebFetch`, subagent/`Task`, `ToolSearch`, `Write` scoped to
-  `runs/`, and the browser-MCP tool patterns — **no Bash**), passed via `--settings` so the strict
-  set applies only to the headless judge run and not to interactive sessions in the repo. Scheduled
-  runs never need Bash because the launcher runs `collect` first; the prompt's "generate the
-  artifacts yourself" fallback is interactive-only.
+  produces no complete, valid `verdicts.json` response (crash, auth failure, timeout, missing, or
+  duplicate pending verdict), the service exits before applying or committing state. A broken judge went
+  unnoticed for 12 days (2026-06-22 to 2026-07-04, an expired local login) before this check
+  existed.
+- **The unattended judge bypasses Codex approvals and sandboxing.** Codex currently requires
+  `--dangerously-bypass-approvals-and-sandbox` for noninteractive Playwright MCP calls. This is a
+  deliberate owner-approved tradeoff to retain browser-only shelter coverage; scraped content can
+  influence an agent with full local authority. The prompt restricts the task and Playwright's
+  configuration exposes only read-oriented browser tools, but neither is a hard filesystem
+  boundary. The CLI writes the schema-validated final response to `runs/<ts>/verdicts.json`; the
+  launcher owns the intended state, index, and git mutations. It uses `gpt-5.6-luna`, chosen for
+  this recurring, high-volume classification workload.
+- **A service timeout, not an in-process watchdog.** `TimeoutStartSec=90min` in the systemd unit
+  caps the complete service cgroup, including children, so one bad run cannot block later timer
+  slots indefinitely.
 - **Git tracks the valuable artifacts and their inputs.** Tracked: `state.json` (the authoritative
   record), the rendered index, shelter config, prompt, code, and deploy files. The per-run
   artifacts (`pending.json`, `verdicts.json`, `fetch_manifest.json`, stream/report) and logs are
@@ -121,8 +117,8 @@ prose Markdown:
   behaviour. A listing with no explicit breed, or a cross naming an unknown or shedding parent,
   can't be judged and is excluded.
 - **Listing fields are taken at face value.** Breed, size, sex, location, and fee are trusted as
-  stated; the LLM WebFetches a listing only to confirm an ambiguous field. The pipeline doesn't
-  otherwise second-guess a shelter's data.
+  stated; an ambiguous breed is kept with a `verify coat/breed` tag rather than triggering another
+  static fetch. The pipeline doesn't otherwise second-guess a shelter's data.
 - **Place name approximates drive time.** "Within ~4 hours of Sydney" is judged from the stated
   town/region against known NSW + ACT geography, not a routing API; borderline towns are kept with
   a `verify drive time` tag.
@@ -138,8 +134,8 @@ prose Markdown:
   PetRescue in a static, parseable format the code handles directly; JS-rendered sites and
   own-sites are the exception, flagged for the browser path. The parser assumes that static
   structure stays stable enough to parse — and fails loud when it drifts.
-- **Single-user, single-machine.** Paths are specific to this install
-  (`/Users/fanguard/Code/dog-finder`) because launchd plists cannot expand `~`.
+- **Single-user, single-machine.** The systemd user unit assumes the checkout is at
+  `~/Code/dog-finder`; the launcher itself derives the repository root from its own location.
 - **Legacy entries age out rather than being pruned.** Index entries predating the 2026-05-24
   low-shed criteria change are left to age out rather than retroactively removed; a header note
   flags them.
@@ -166,28 +162,42 @@ prose Markdown:
 
 ## Test
 
-The suite is plain `unittest` with no network and no third-party dependencies, so it runs on the
-same stock interpreter the launchd job uses. From the repo root:
+The suite is plain `unittest` with no network and no third-party dependencies. From the repo root:
 
 ```
-/usr/bin/python3 -m unittest discover -s tests
+python3 -m unittest discover -s tests
 ```
 
-It must pass on stock macOS Python (3.9.6); this is the gate for every change. Tests use HTML
-fixtures under `tests/fixtures/` rather than live fetches.
+It must pass on the Linux `python3` interpreter used by the systemd service; this is the gate for
+every change. Tests use HTML fixtures under `tests/fixtures/` rather than live fetches.
 
 ## Deploy
 
-The job runs **locally only**, as a macOS `launchd` agent — never as a cloud routine (see *Runs
-locally via launchd, not the cloud* above). All steps run on this machine, from the repo root:
+The job runs **locally only**, as a Linux `systemd --user` timer — never as a cloud routine (see
+*Runs locally via systemd, not the cloud* above). The checkout must be at `~/Code/dog-finder`.
 
-- **Install:** copy the agent definition into `LaunchAgents` and load it —
-  `cp deploy/com.dog-finder.daily-refresh.plist ~/Library/LaunchAgents/` then
-  `launchctl load ~/Library/LaunchAgents/com.dog-finder.daily-refresh.plist`.
-- **Change the schedule (or any field):** edit `deploy/com.dog-finder.daily-refresh.plist` — its
-  `StartCalendarInterval` sets the run time — then copy it over the installed copy as above and
-  reload it: run `launchctl unload` then `launchctl load`, both on
-  `~/Library/LaunchAgents/com.dog-finder.daily-refresh.plist`.
-- **Verify & inspect:** `launchctl list | grep dog-finder` confirms it is registered;
-  `logs/daily-refresh.log` records each run. To run once on demand without waiting for the
-  schedule, invoke `scripts/daily-refresh.sh` directly.
+- **Prerequisites:** install Node.js 22 and register Playwright MCP with headless Firefox:
+  `codex mcp add playwright -- npx -y @playwright/mcp@0.0.78 --browser firefox --headless --isolated`.
+  Install the matching managed browser runtime with
+  `npx -y @playwright/mcp@0.0.78 install-browser firefox`, then set this exact read-oriented
+  allowlist in `~/.codex/config.toml`:
+
+  ```toml
+  enabled_tools = [
+    "browser_console_messages", "browser_find", "browser_navigate",
+    "browser_navigate_back", "browser_network_request", "browser_network_requests",
+    "browser_snapshot", "browser_tabs", "browser_wait_for",
+  ]
+  ```
+
+  Keep the MCP version pinned; review and test any version update before changing it in that
+  configuration.
+- **Install:** copy the two unit files and activate the timer:
+  `mkdir -p ~/.config/systemd/user && cp deploy/dog-finder-daily-refresh.{service,timer} ~/.config/systemd/user/ && systemctl --user daemon-reload && systemctl --user enable --now dog-finder-daily-refresh.timer`.
+  Run `loginctl enable-linger "$USER"` once if the timer must run while you are logged out.
+- **Change the schedule:** edit `deploy/dog-finder-daily-refresh.timer`, copy it over as above,
+  then run `systemctl --user daemon-reload && systemctl --user restart dog-finder-daily-refresh.timer`.
+- **Verify & inspect:** `systemctl --user list-timers dog-finder-daily-refresh.timer` confirms it
+  is registered; `journalctl --user -u dog-finder-daily-refresh.service` and
+  `logs/daily-refresh.log` record each run. To run once on demand, use
+  `systemctl --user start dog-finder-daily-refresh.service`.

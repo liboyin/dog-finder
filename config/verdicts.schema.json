@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dog finder daily-refresh response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verdicts", "report"],
+  "properties": {
+    "verdicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "url",
+          "verdict",
+          "summary",
+          "tags",
+          "removed",
+          "name",
+          "breed",
+          "age",
+          "sex",
+          "size",
+          "location",
+          "shelter",
+          "fee",
+          "status",
+          "source_kind",
+          "source"
+        ],
+        "properties": {
+          "url": {"type": "string"},
+          "verdict": {"enum": ["qualified", "rejected"]},
+          "summary": {"type": ["string", "null"]},
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "removed": {"type": "boolean"},
+          "name": {"type": ["string", "null"]},
+          "breed": {"type": ["string", "null"]},
+          "age": {"type": ["string", "null"]},
+          "sex": {"type": ["string", "null"]},
+          "size": {"type": ["string", "null"]},
+          "location": {"type": ["string", "null"]},
+          "shelter": {"type": ["string", "null"]},
+          "fee": {"type": ["string", "null"]},
+          "status": {"type": ["string", "null"]},
+          "source_kind": {"type": ["string", "null"]},
+          "source": {"type": ["string", "null"]}
+        },
+        "additionalProperties": false
+      }
+    },
+    "report": {"type": "string", "minLength": 1}
+  }
+}

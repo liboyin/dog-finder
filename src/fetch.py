@@ -12,7 +12,7 @@ import urllib.request
 from dataclasses import dataclass
 
 USER_AGENT = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) dog-finder/1.0"
 )
 DEFAULT_TIMEOUT = 25

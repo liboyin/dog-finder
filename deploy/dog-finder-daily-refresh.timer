@@ -1,0 +1,10 @@
+[Unit]
+Description=Run dog-finder daily refresh at 13:00 Australia/Sydney
+
+[Timer]
+OnCalendar=*-*-* 13:00:00 Australia/Sydney
+Persistent=true
+Unit=dog-finder-daily-refresh.service
+
+[Install]
+WantedBy=timers.target
