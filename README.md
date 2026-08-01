@@ -185,7 +185,8 @@ every change. Tests use HTML fixtures under `tests/fixtures/` rather than live f
 The job runs **locally only**, as a Linux `systemd --user` timer — never as a cloud routine (see
 *Runs locally via systemd, not the cloud* above). The checkout must be at `~/Code/dog-finder`.
 
-- **Prerequisites:** install Node.js 22 and register Playwright MCP with headless Firefox:
+- **Prerequisites:** this Ubuntu 26.04 deployment requires NetworkManager and its
+  `/usr/bin/nm-online` utility, plus Node.js 22 and the headless Firefox Playwright MCP:
   `codex mcp add playwright -- npx -y @playwright/mcp@0.0.78 --browser firefox --headless --isolated`.
   Install the matching managed browser runtime with
   `npx -y @playwright/mcp@0.0.78 install-browser firefox`, then set this exact read-oriented
@@ -201,6 +202,14 @@ The job runs **locally only**, as a Linux `systemd --user` timer — never as a 
 
   Keep the MCP version pinned; review and test any version update before changing it in that
   configuration.
+- **Network readiness:** before every refresh, the service runs `/usr/bin/nm-online -q -t 300`.
+  It waits up to five minutes for a usable NetworkManager connection; failure prevents the
+  launcher from starting and is visible in
+  `journalctl --user -u dog-finder-daily-refresh.service`. `TimeoutStartSec=90min` covers this
+  pre-start wait and the refresh itself, so the five-minute bound remains within the service cap.
+  The timer has no immediate retry policy: a failed preflight waits for the next Sydney-scheduled
+  activation or a manual `systemctl --user start dog-finder-daily-refresh.service`. Do not add
+  `Restart=` without an owner decision.
 - **Install:** copy the two unit files and activate the timer:
   `mkdir -p ~/.config/systemd/user && cp deploy/dog-finder-daily-refresh.{service,timer} ~/.config/systemd/user/ && systemctl --user daemon-reload && systemctl --user enable --now dog-finder-daily-refresh.timer`.
   Run `loginctl enable-linger "$USER"` once if the timer must run while you are logged out.
