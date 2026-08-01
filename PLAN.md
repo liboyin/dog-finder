@@ -1,291 +1,682 @@
-# PLAN.md — dog-finder improvement plan (execution hand-over)
+# PLAN.md — post-migration hardening hand-over
 
-- **Historical record:** this is the finalized July 2026 Claude/macOS work-plan. Its completed
-  work-package details and operational history are retained for context; current runtime,
-  scheduling, and deployment documentation lives in [`README.md`](README.md).
-- **Finalized:** 2026-07-10. Review evidence is from the 2026-07-05 snapshot (state, index, logs); the daily job has run since, so re-verify specifics like `last_seen` values before relying on them.
-- **Authority:** every decision in §3 was confirmed by the owner. Do not re-open them. If you hit a genuine ambiguity that §3–§5 doesn't cover, **stop and ask the owner** (AGENTS.md meta guideline) — do not guess on contract-level questions.
-- **Audience:** an agent executing one or more work packages (§4) with no other context. Read `AGENTS.md` and `README.md` first; this file assumes both.
+This is the execution plan for hardening the Ubuntu/Codex migration in commit
+`1c30f5c`. It replaces the completed July 2026 Claude/macOS plan. The next agent
+must read `AGENTS.md` and `README.md` before starting and must keep this file
+current as work packages are completed.
 
-## 0. Progress tracker
+## 0. Objective and scope
 
-Flip a row to `DONE` **in the same commit** that completes the work package, and put `(WPn)` in the commit's one-line summary so history maps to this table.
+The project now runs on Ubuntu 26.04 with system Python 3.14, Codex using
+`gpt-5.6-luna`, and a pinned Playwright MCP driving headless Firefox. The
+migration is structurally sound, but its adversarial review found six runtime
+and data-integrity risks. This plan resolves all six and performs the final
+end-to-end verification that the committed completeness gate has not yet
+received.
 
-| WP | Title | Status |
-|----|-------|--------|
-| WP1 | Confirmed rechecks bump `last_seen` | DONE |
-| WP2 | `FetchError` status + `recheck_reason` | DONE |
-| WP3 | Browser-dog staleness recheck | DONE |
-| WP4 | `EMPTY_OK` out of `n_errors` | DONE |
-| WP5 | Launcher hardening | DONE |
-| WP6 | Drop Labradoodle Association source | DONE |
-| WP12 | Remove `flag_disappeared` | DONE |
-| WP7 | Per-dog identity on shared-URL pages | DONE |
-| WP8 | Split `source` vs `shelter` | DONE |
-| WP10 | Sanitize rendered content | DONE |
-| WP11 | Run/log retention | DONE |
-| WP9 | Judge permission allowlist | DONE (verified 2026-07-17, run ts=20260717-011133: verdicts written, zero denials, clean apply+commit. CLI 2.1.202 ignores path-scoped Write rules, so scoping is enforced by the PreToolUse hook `scripts/judge-write-guard.py`) |
-| WP13 | Residual documentation fixes | DONE |
+In scope:
 
-**Recommended order** (rows above are in it): WP1–WP6 in any order (independent) → WP12 (needs WP2+WP3; doing it before WP8 means WP8 never touches `flag_disappeared`) → WP7 → WP8 → WP10 → WP11 → WP9 (its paid verification run needs scheduling care) → WP13 last.
+1. Represent an inconclusive browser recheck without changing the dog or
+   failing an otherwise valid run.
+2. Require exactly one explicit outcome for every pending input, including
+   rejected and intentionally deferred dogs.
+3. Make response URL validation identical to the URL validation used during
+   state merge.
+4. Ensure browser discoveries always retain browser lifecycle tracking.
+5. Make apply failures fatal before Git operations and reduce the state/index
+   inconsistency window.
+6. Replace the ineffective user-level `network-online.target` dependency with
+   a network check that exists on the target Ubuntu host.
+7. Record Python 3.14 as the runtime, simplify module invocation, and eliminate
+   the `HTTPError` resource warnings exposed by the new interpreter.
+8. Run a controlled, isolated end-to-end refresh with the final code.
 
----
+Out of scope unless the owner explicitly expands it:
 
-## 1. System facts an executor must know
+- Changing the dog qualification criteria, source list, schedule, model, MCP
+  version, or MCP tool allowlist.
+- Weakening or removing complete pending-URL coverage.
+- Adding automatic model retries, batching, or a different model merely to make
+  a failed live verification pass.
+- Broad modernization of every Python module just because Python 3.14 is
+  available.
+- Installing or enabling the user timer on the production checkout.
+- Reverting, amending, or force-pushing existing commits.
 
-### 1.1 Repo map
+## 1. Baseline and evidence
 
-| Path | Responsibility |
-|---|---|
-| `src/pipeline.py` | CLI + orchestration: `prune` / `collect` / `apply` / `index-check` subcommands; pagination loop; qualified-detail recheck; git-diff commit gate |
-| `src/store.py` | State document: load/save (atomic), upsert/touch, disappearance flagging, prune, pending selection, verdict merge |
-| `src/fetch.py` | HTTP GET with UA, timeout, one retry; `FetchError` |
-| `src/dedup.py` | `canonical(url)` — the state key function |
-| `src/render.py` | Renders qualified entries into the marked region of `data/dog-index.md`; index-membership diff helpers |
-| `src/manifest.py` | Per-source run outcomes (`SourceResult`, status constants) |
-| `src/parsers/` | `base.py` (Listing, ParseError, text helpers), `petrescue.py`, `wollongong.py`, `registry.py` (host→parser; `SOURCE_KIND`→parser) |
-| `src/parse_usage.py` | Parses the judge's stream-json for `logs/usage.log` (Claude-Code-specific; standalone script) |
-| `scripts/daily-refresh.sh` | zsh launcher run by launchd: prune → collect → `claude -p` judge (watchdog, budget) → apply → conditional commit/push → usage parse |
-| `prompts/daily-refresh.md` | Judge instructions; the launcher extracts everything after the first `---` line |
-| `config/shelters.json` | Source list (name, region, listing_url, optional petrescue_url, optional `render: js\|dead`) |
-| `data/state.json` | Authoritative record, keyed by `canonical(url)` (~2,240 entries, tracked in git) |
-| `data/dog-index.md` | Human artifact; only the `<!-- DOGS:BEGIN/END -->` region is machine-managed |
-| `deploy/*.plist` | launchd agent definition (13:00 daily) |
-| `runs/<ts>/`, `logs/` | Per-run artifacts and logs — **gitignored**, never stage them |
-| `tests/` | `unittest` suite + HTML fixtures in `tests/fixtures/` |
+Record these facts before making changes; re-check them if the environment has
+changed:
 
-### 1.2 Environment & conventions
+- Repository baseline: `1c30f5c` on `main`.
+- Runtime observed during review: Python `3.14.4`, Node.js `22.22.1`, npm
+  `9.2.0`, Codex CLI `0.146.0`.
+- Browser integration: `@playwright/mcp@0.0.78`, Firefox, headless, isolated,
+  with the nine read-oriented tools documented in `README.md`.
+- Current unit baseline: 103 tests pass, but `tests/test_fetch.py` emits two
+  `ResourceWarning` messages for unclosed `HTTPError` objects.
+- Shell syntax, JSON parsing, systemd unit syntax, and the Sydney calendar
+  expression pass their static checks.
+- `systemctl --user show network-online.target` reports `LoadState=not-found`
+  on this host. `/usr/bin/nm-online` is installed.
+- The retained run `runs/20260801-110350` completed before the final coverage
+  gate was committed. It contains 191 pending inputs but only 11 verdict
+  objects, while its prose report claims 181 rejections. That run is evidence
+  that the final committed contract still needs a fresh live test, not evidence
+  that it already passed one.
+- The systemd timer is not currently installed in the user manager. Do not
+  install it merely to execute this plan.
 
-- **Runtime:** stock macOS Python (`/usr/bin/python3`, **3.9.6**), stdlib only — no new dependencies, no ≥3.10 runtime syntax. Modern type annotations are fine only because every module has `from __future__ import annotations`; keep that pattern in new files.
-- **Tests:** `/usr/bin/python3 -m unittest discover -s tests` — 59 pass at hand-over, runs in <1 s, no network. This is the gate for every commit. The suite is plain `unittest` (pytest is *not* installed for the system interpreter — don't write pytest-isms).
-- **Docstrings (AGENTS.md):** Google style for new/changed non-test functions; one-line docstrings for test methods.
-- **Test idioms to reuse** (see `tests/test_pipeline.py`): patch `time.sleep` in `setUp` via `mock.patch`; fake fetches with `mock.patch.object(pipeline, "fetch", side_effect=...)` returning `FetchResult(url=u, status=200, body=u, bytes=len(u))`; fake parser modules with `types.SimpleNamespace(parse_list=..., parse_detail=..., SOURCE_KIND=...)`.
-- **State entry shape** (see `store._entry_from_listing`): `url, name, breed, age, sex, size, species, location, shelter, fee, status, source_kind, first_seen, last_seen, verdict(pending|qualified|rejected), summary, tags, removed, recheck`. Timestamps are `YYYYMMDD-HHMMSS` strings compared lexically.
-- **Key invariant:** code owns `state.json` and the rendered index region; the LLM's only write is `verdicts.json`. Preserve this in every change.
+Before each work package:
 
-### 1.3 The live schedule
+```bash
+git status --short
+python3 --version
+python3 -m unittest discover -s tests
+```
 
-A launchd job (`com.dog-finder.daily-refresh`) runs `scripts/daily-refresh.sh` at **13:00 local (Australia/Sydney)** daily. It mutates `data/*`, and commits **and pushes** `main` when index membership changed. A run takes roughly 5–15 minutes.
+The primary worktree must be clean before implementation starts. Existing
+changes from the owner must not be staged, reverted, or overwritten.
 
-## 2. Ground rules for executors
+## 2. Invariants and settled design decisions
 
-Important note: This plan may be executed on a computer that does not host the daily job. Never set up the job unless explicitly asked to.
+These decisions remove ambiguity for the implementing agent.
 
-1. **Sequence with the live job; don't pause it.** No `launchctl` changes. Don't leave the repo broken or half-migrated across 13:00 — finish and commit a work package, or don't start it. `data/state.json` and `data/dog-index.md` are routinely dirty from "keep-local" daily runs; that is normal — **never stage or revert them**.
-2. **Commit straight to `main`**, one WP per commit, AGENTS.md format — `Claude: <one-line summary> (WPn)` plus one explanatory paragraph, **no** Co-Authored-By. The daily job may auto-push your commits; accepted. Do not push manually unless a WP says so.
-3. **Sandbox procedure** for exercising the pipeline by hand: copy state first —
-   `SCRATCH=$(mktemp -d); cp data/state.json "$SCRATCH/"; /usr/bin/python3 -m src.pipeline collect --shelters config/shelters.json --state "$SCRATCH/state.json" --out "$SCRATCH/out"`.
-   Note a real `collect` fetches ~40 live shelter pages over several minutes — prefer unit tests; use live collect only when a WP explicitly calls for it, and never point ad-hoc runs at `data/state.json`.
-4. **Paid runs:** only WP9 requires an end-to-end judge run. Protocol in §6; cost ≤ $2.50 per attempt (the built-in cap — do not change it). Everything else is verifiable by unit tests plus, where noted, observing the next scheduled run's output in `logs/daily-refresh.log` and `runs/<ts>/`.
-5. **Docs travel with code** (AGENTS.md): each WP lists the README/prompt sections it makes stale; update them in the same commit. WP13 covers only *pre-existing* drift.
-6. §7 lists things deliberately **out of scope** — do not fix or improve them in passing, even where the code invites it.
+### 2.1 Response outcomes
 
----
+Every entry in `pending.json` must appear exactly once in the final response.
+The permitted outcomes are:
 
-## 3. Owner decisions (final — treat as constraints)
+- `qualified`: apply the positive judgment normally.
+- `rejected`: apply the negative judgment normally.
+- `deferred`: the browser check was inconclusive, so count the URL as covered
+  but make **no state mutation for that entry**.
 
-1. **Labradoodle sources:** labradoodles are categorically excluded (typically >10 kg; also fail the coat rule). Drop the *Australian Labradoodle Association rehoming* source; **keep DoodleAid** (it also carries qualifying small oodles).
-2. **Multi-dog URLs:** a URL is *not* a reliable per-dog identifier. When one page hosts several dogs (e.g. PAWS `FosterCareDogs.html`), **all** must be representable — extend the state key (WP7).
-3. **Cross-listing duplicates accepted:** the same dog listed under two sources (own-site + PetRescue) may appear twice in the index. No dedup logic anywhere. Document it.
-4. **No "code-delegation refactor":** not planned; remove the stale README reference. The judge re-judging browser-shelter dogs every run is an accepted cost. Budget cap stays at $2.50/run, verification runs included.
-5. **Browser-dog rechecks** go through the **browser-MCP subagent path**, not WebFetch (browser shelters are exactly the WebFetch-blocked ones — the 2026-07-05 log shows 8 of them returning 403/JS-blocked). **Removal requires positive evidence** (dead per-dog URL, or explicit adopted/rehomed content, or confirmed absence from the shelter's rendered list); unreachability alone means leave it and retry next run.
-6. **Source vs shelter split approved** (WP8): the index must show the real shelter, not "PetRescue NSW poodle search (aggregator)".
-7. **Prompt intent on state.json:** the judge must never *edit* `state.json`/`dog-index.md` itself; *invoking the deterministic pipeline* (which owns those files) is allowed. Reword the prompt accordingly (WP13).
-8. **Judge permissions:** replace `--dangerously-skip-permissions` with an explicit allowlist (WP9).
-9. **Coordination:** sequence between daily runs; commit to main.
-10. **CI is dropped** (no GitHub Actions). **`flag_disappeared` removal is in scope** (WP12).
+`deferred` is only valid for a URL that was already present in this run's
+pending input with a truthy `recheck` field and only when the browser result is
+inconclusive. It is not valid for an ordinary new pending candidate or a newly
+discovered browser URL. In particular, applying a deferred entry must not
+change `last_seen`, `verdict`, `removed`, `summary`, `tags`, `recheck`, or
+`recheck_reason`.
 
-Accepted defaults — encode as-is, see also §5: staleness threshold N = 3 days; 404/410 flag vs 403/5xx/timeout transient; lock contention skips the run; 30-day run-artifact retention; index displays real shelter with source kept in state.
+The completeness gate remains fail-closed:
 
----
+- Missing pending URLs fail the run.
+- Duplicate canonical URLs fail the run.
+- Unsafe raw URLs fail the run before apply.
+- Extra URLs are allowed only for valid browser discoveries.
 
-## 4. Work packages
+### 2.2 Browser discovery lifecycle
 
-### WP1 — Confirmed rechecks must count as "seen"
-- **Problem:** `_recheck_qualified_details` ([pipeline.py:182-240](src/pipeline.py)) confirms a dog live daily but never bumps `last_seen`; only list cards do, via `store.touch`. A long-on-hold dog delisted from list renders (PetRescue hides on-hold dogs from search results) is pruned at 90 days *despite daily confirmations* and silently vanishes from the index.
-- **Change:** add a `ts: str` parameter to `_recheck_qualified_details`; on the confirmed path (detail parsed, status != adopted) set `entry["last_seen"] = ts`. Update the call site in `collect` (it has `ts` in scope) and the existing tests in `tests/test_pipeline.py` (`RecheckQualifiedDetailsTest` and `CollectRecheckIntegrationTest` call the old signature).
-- **Tests:** confirmed entry's `last_seen` == run ts; flagged (404/adopted) entries' `last_seen` unchanged.
-- **Commit summary:** `Claude: count a confirmed detail recheck as a sighting (WP1)`
+Every response URL not present in `pending.json` is a browser discovery. It must
+have `source_kind: "browser"`; null, empty, or another value is invalid. State
+merge should still defensively hard-code `"browser"` for a genuinely new entry
+rather than trusting response provenance, but validation is the primary
+enforcement point.
 
-### WP2 — `FetchError` carries HTTP status; rechecks record a reason
-- **Problem:** [fetch.py](src/fetch.py) collapses 404 / 403 / timeout into one string. Permanent 4xx get a pointless retry; `_recheck_qualified_details` flags `maybe_adopted` on *any* failure (mass false flags on an outage day); the judge is told nothing about *why* a dog was flagged and re-investigates from scratch.
-- **Change, fetch side:** give `FetchError` an optional `status: int | None` attribute (custom `__init__(message, status=None)`). In `fetch()`, catch `urllib.error.HTTPError` **before** `URLError` (it's a subclass — catch order matters), record `error.code`, and skip the retry loop when `400 <= code < 500`. Keep the existing exception tuple for the transport cases.
-- **Change, pipeline side:** in `_recheck_qualified_details`, branch on the caught error:
-  - `FetchError` with status 404/410 → flag, `entry["recheck_reason"] = "http_gone"`.
-  - `ParseError` (detail page no longer matches the template — often what an adopted-page rewrite looks like) → flag, reason `"detail_unparseable"` (preserves current behavior, now labeled).
-  - `FetchError` with any other/no status (403, 5xx, timeout, DNS) → **do not flag**; log at INFO and leave the entry untouched (per-dog analogue of the shelter-outage rule).
-  - Parsed page with `status == "adopted"` → flag, reason `"status_adopted"`.
-  - `flag_disappeared` sets reason `"vanished_from_list"` (dies with WP12 — fine either way).
-  - `apply_verdicts` clears `recheck_reason` wherever it clears `recheck`. The reason reaches `pending.json` automatically (entries serialize whole). New-entry template in `_entry_from_listing` gains `"recheck_reason": None`.
-- **Prompt:** step 4 of `prompts/daily-refresh.md`: the judge may treat `recheck_reason: "http_gone"` as strong evidence — one confirming fetch, not a full investigation.
-- **Tests:** no-retry on 404 (assert single attempt via a counting side_effect); retry preserved on URLError; each reason recorded; 403/timeout does not flag and does not clear an existing flag.
-- **Commit summary:** `Claude: carry HTTP status on FetchError and record recheck reasons (WP2)`
+### 2.3 Apply failure semantics
 
-### WP3 — Staleness detection for browser-sourced dogs *(after WP2)*
-- **Problem:** `flag_disappeared` excludes `source_kind == "browser"` ([store.py:150](src/store.py)) and the detail recheck skips them (no registered parser) — nothing ever questions a browser-found qualified dog. Evidence (2026-07-05): two of eight index entries were 23 and 35 days stale, both shown "available". Their only exit was the 90-day prune — a silent, unconfirmed drop.
-- **Change:** new function in `store.py` (keep it separate from `flag_disappeared` so WP12's removal is clean):
-  `flag_stale_browser(state, cutoff) -> list[dict]` — flags qualified, non-removed, `source_kind == "browser"` entries with no current `recheck` whose `last_seen < cutoff`, setting `recheck = "maybe_adopted"`, `recheck_reason = "stale_browser"`. In `collect`, compute the cutoff exactly as `prune` does (`datetime.now() - timedelta(days=3)`, same string format) and call it alongside the other flagging; include the count in the log line and `n_maybe_adopted`.
-- **Prompt:** step 4: entries with `recheck_reason: "stale_browser"` belong to JS/blocked sites — verify via the **browser-MCP subagent path**, not WebFetch (a WebFetch failure is NOT evidence). Emit `removed: true` only on positive evidence (§3.5). Otherwise re-emit the dog as qualified — that bumps `last_seen` through `apply_verdicts` and unflags it. Inconclusive → leave it; it retries next run.
-- **Why N=3 is safe:** present browser dogs get `last_seen` bumped every run the browser pass re-emits them (accepted behavior, §3.4), so 3 days tolerates a couple of failed browser passes without false flags, while capping staleness at days instead of months.
-- **Tests:** flagging predicate over age/source_kind/verdict/removed/existing-flag combinations; cutoff arithmetic.
-- **Commit summary:** `Claude: flag stale browser-sourced dogs for recheck (WP3)`
+The state file remains authoritative. A normal render/validation failure must
+happen before either state or index is written. Both outputs should use atomic
+single-file replacement so a process interruption cannot truncate either file.
+There is no portable atomic transaction spanning two files; do not build a
+large transaction framework for this project. Instead:
 
-### WP4 — Stop counting `EMPTY_OK` as an error
-- **Problem:** `collect`'s `n_errors` includes `EMPTY_OK` ([pipeline.py:311](src/pipeline.py)); ~6 legitimately-empty shelters read as "6 source error(s)" every day, training humans to ignore the one signal that matters.
-- **Change:** `n_errors` = `PARSE_ERROR` + `FETCH_ERROR` only; add `n_empty`; extend `main()`'s collect summary line (`… X empty, Y source error(s)`).
-- **Tests:** stats dict assertions over a mixed manifest.
-- **Commit summary:** `Claude: report empty sources separately from source errors (WP4)`
+1. Load state, verdicts, and the current index.
+2. Apply verdicts to the in-memory state.
+3. Render the new index completely in memory.
+4. Atomically save state and atomically replace the index.
+5. If any apply step exits nonzero, the launcher exits nonzero immediately and
+   performs no Git add, commit, or push.
 
-### WP5 — Launcher hardening (`scripts/daily-refresh.sh` + one help string)
-- **Changes (one commit):**
-  - **Overlap lock:** `mkdir "$DIR/.run.lock"` (atomic; zsh-safe) at the top; on failure, if the lock dir's mtime is older than 4 hours (`stat -f %m`, macOS syntax) treat it as stale from a crash — remove and retake; otherwise log `"another run holds the lock; skipping"` and exit 0. Release with `trap 'rmdir "$DIR/.run.lock" 2>/dev/null' EXIT`.
-  - **Scoped commit:** `git commit -m "…" -- "$INDEX" "$STATE"` so files a human left staged are never swept into an automated commit.
-  - Line 164: bare `python3` → `/usr/bin/python3` (only inconsistency in the file).
-  - [pipeline.py:448](src/pipeline.py) `index-check` help: "…if a dog was **added or dropped** since HEAD…".
-- **Verify:** run the script twice concurrently against the sandbox pattern is impractical (it invokes the judge) — instead test the lock logic by extracting it verbatim into a throwaway script, or start `daily-refresh.sh`, immediately invoke it again, confirm the second exits on the lock, then kill the first and confirm the trap released the lock. Suite green (help text).
-- **Commit summary:** `Claude: add a run lock and scope the automated commit (WP5)`
+This ordering eliminates ordinary parse/render failures before mutation and
+ensures any rare write/replace failure is visible and never committed
+automatically. Document the remaining cross-file crash window rather than
+claiming a two-file transaction.
 
-### WP6 — Drop the Australian Labradoodle Association source
-- **Change:** remove that entry from `config/shelters.json` (it's the `australianlabradoodleassoc.org.au` one). Keep DoodleAid. README *Assumptions* gains one line: breed-specific sources whose breed is categorically disqualified (labradoodle: >10 kg typical + shedding parent) are not monitored.
-- **Check:** `python3 -c "import json; json.load(open('config/shelters.json'))"`; then confirm no qualified live state entry names it as shelter: none expected (it was browser-path; strays age out via prune, same as the documented doggierescue case).
-- **Commit summary:** `Claude: drop the Labradoodle Association source (WP6)`
+### 2.4 Network readiness
 
-### WP12 — Remove `flag_disappeared` *(after WP2 + WP3; before WP8 recommended)*
-- **Rationale (owner-approved):** since 137cc35, every qualified non-browser dog is detail-rechecked directly each run and both failure modes (gone, adopted) are caught there; WP3 covers browser dogs. `flag_disappeared`'s only residual value is parsers lacking `parse_detail` — none exist, and this WP makes that a requirement.
-- **Change:**
-  - Delete `store.flag_disappeared` and its tests; in `collect`, remove the call plus the now-unused bookkeeping: the `present` set threaded through `_collect_source`, the `fetched_shelters` computation, and the `detail_confirmed` half of the recheck return value (`_recheck_qualified_details` then only returns `flagged` — simplify its signature and docstring).
-  - Add a registry test asserting **every module in `registry._REGISTRY` exposes `parse_detail`** — this is now a hard requirement for vanish detection; state it in [base.py](src/parsers/base.py)'s module docstring ("parsers MUST define parse_detail") and in README *Architecture*.
-  - Keep/extend a regression test proving the recheck path flags a dog that vanished from its list **and** whose detail URL died (the exact case `flag_disappeared` existed for).
-- **Commit summary:** `Claude: fold vanish detection into the detail recheck (WP12)`
+The target is Ubuntu 26.04 with NetworkManager and `/usr/bin/nm-online`. Remove
+the nonexistent user-manager `network-online.target` dependency. The service
+should wait for a usable NetworkManager connection with a bounded
+`ExecStartPre=/usr/bin/nm-online -q -t 300`. A timeout must fail the service
+before collection starts.
 
-### WP7 — Per-dog identity on shared-URL pages
-- **Problem:** state is keyed by `canonical(url)` and [dedup.canonical()](src/dedup.py) strips fragments, so one URL = at most one dog. PAWS lists many dogs on one page; the current entry ("Bindi", key `https://www.paws.com.au/FosterCare/FosterCareDogs.html`) occupies the slot, and the next PAWS dog the judge emits would silently overwrite her via `apply_verdicts` — a lost dog, the failure this project exists to prevent.
-- **Change:**
-  - `canonical()` **preserves the fragment**: pass `parts.fragment` through `urlunsplit` instead of `""`. Backwards-compatible with all existing keys (none carries a fragment; PetRescue card hrefs are `/listings/\d+`). **The existing test asserts the old behavior — update `tests/test_dedup.py::test_trailing_slash_and_fragment_removed`** (rename it; fragment is now kept, docstring accordingly).
-  - Prompt step 2 (browser instructions): when a shelter page lists multiple dogs under one URL, emit each dog's `url` as `<page-url>#<slug>` where slug = dog's name lowercased, non-alphanumeric runs collapsed to single hyphens (e.g. `#bindi`); the slug must be reproducible run-to-run so re-scrapes merge. Two identically-named dogs on one page is accepted as unresolvable.
-  - Prompt step 4 note: a `#fragment` URL can't be fetched more precisely than its page — verifying such a dog means checking the page still shows that dog.
-  - **Migration** (same commit, then delete the throwaway): rekey the PAWS entry —
-    ```
-    /usr/bin/python3 - <<'EOF'
-    import json
-    p = 'data/state.json'
-    s = json.load(open(p))
-    old = 'https://www.paws.com.au/FosterCare/FosterCareDogs.html'
-    e = s['listings'].pop(old, None)
-    if e:
-        e['url'] = old + '#bindi'
-        s['listings'][old + '#bindi'] = e
-        json.dump(s, open(p, 'w'), indent=2, ensure_ascii=False, sort_keys=True)
-        print('migrated')
-    else:
-        print('entry absent — verify state before proceeding')
-    EOF
-    ```
-    Run it between daily runs; the changed URL will register as a drop+add at the next daily run and trigger one automated commit — expected and fine. (Committing the migrated `state.json` in this WP's commit is acceptable as the documented exception to ground rule 1 — say so in the commit paragraph.)
-  - README *Assumptions*: rewrite "a listing URL is a stable, unique identity" — per-dog URLs where the site provides them; `url#name-slug` for shared pages; cross-source duplicates accepted (§3.3).
-- **Tests:** `canonical` keeps fragments and still lowercases host / strips trailing slash; two fragment-distinct dogs on one page coexist through `apply_verdicts` (create both, assert two entries).
-- **Commit summary:** `Claude: key shared-page dogs by URL fragment (WP7)`
+Do not add silent network polling to Python or weaken fetch errors. If the
+deployment must later support a host without NetworkManager, stop and ask the
+owner rather than silently making this Ubuntu-specific contract vague.
 
-### WP8 — Split `source` vs `shelter` *(after WP7; simpler after WP12)*
-- **Problem:** `card.shelter = card.shelter or name` ([pipeline.py:164](src/pipeline.py)) stores the *config source name* as the dog's shelter — 4 of 8 index entries read "Shelter: PetRescue NSW poodle search (aggregator)", misleading in the one artifact a human trusts.
-- **Change:**
-  - **State:** new field `source` (the config source name — what *found* the dog); `shelter` becomes the actual organization or `None`. Thread it as a parameter: `upsert_listing(state, card, ts, source_kind, source)`; `_entry_from_listing` records both. Stop overwriting `card.shelter` with the source name in `_collect_source`; pass `name` as `source` instead. Browser dogs: subagents already return a real `shelter`; `apply_verdicts` stores `source_kind` today — have it also accept an optional `source` field from the verdict, defaulting to `None`.
-  - **PetRescue parser:** `parse_detail` extracts the rescue group. The detail page links to `/groups/<id>/<Name-Slug>` (confirmed in `tests/fixtures/petrescue_detail.html`: `groups/10748/RSPCA-Illawarra-Shelter`). Prefer the anchor's inner text (`strip_tags`, `clean`); if empty, un-slug the URL tail (`-` → space). Absent group link → leave `listing.shelter` None; this is **not** a `ParseError`.
-  - **Wollongong parser:** `parse_detail` sets `listing.shelter = "Wollongong Pet Connection"` (single-org site).
-  - **Recheck refreshes shelter:** in `_recheck_qualified_details`, after a successful parse, copy `listing.shelter` into the entry when the parser supplied one — this is what backfills existing qualified dogs automatically on the next daily run.
-  - **Render:** `render_block` shows `entry["shelter"] or entry["source"] or "unknown"`.
-  - **Migration** (same commit; idempotent): for every entry, if `"source"` not present: `entry["source"] = entry.get("shelter")`; then set `entry["shelter"] = None` where its value is one of the aggregator source names (the eight `PetRescue NSW … search (aggregator)` names — read them from `config/shelters.json` rather than hard-coding). Non-aggregator names (real shelters/groups) stay in both fields — harmless and mostly correct.
-  - **Docs:** README *Architecture* — one paragraph on the source/shelter distinction and the accepted consequence that cross-source duplicates are visible as two entries (§3.3).
-- **Tests:** fixture test — group name extracted from `petrescue_detail.html`; render fallback chain; migration idempotence (run twice over a fixture state, same result); recheck copies a newly-parsed shelter into the entry.
-- **Verify:** after the next scheduled run, aggregator-found qualified dogs in `data/dog-index.md` show a real shelter (the recheck backfill).
-- **Commit summary:** `Claude: record discovering source separately from the shelter (WP8)`
+### 2.5 Python 3.14 scope
 
-### WP10 — Sanitize rendered content; validate verdict input
-- **Problem:** `render_block` interpolates scraped/LLM text into Markdown verbatim (an HTML leak already shipped once — f723508); `apply_verdicts` accepts arbitrary fields for unknown URLs; the index auto-pushes to GitHub.
-- **Change:**
-  - [render.py](src/render.py): a `_sanitize(text)` applied to every interpolated field (fold into `_value`): strip HTML tags (reuse `base._TAG_RE`-style regex), escape `[` and `]` (`\[`, `\]`), collapse whitespace. URLs are handled by validation below, not escaping.
-  - [store.py](src/store.py) `apply_verdicts`: ignore a verdict whose `url` doesn't start with `http://`/`https://` or contains whitespace/`<`/`>` (log a warning); cap every stored string field at **200 chars** (truncate; summaries are ≤25 words by contract anyway). Optionally default missing `verdict` to `"pending"` on newly-created entries so they can't become invisible orphans (see Appendix A).
-- **Tests:** a name like `](http://evil) <script>x</script>` renders inert; over-long summary truncated; junk-URL verdict ignored; legitimate fields (locations with parentheses, fees with `$`) render unchanged.
-- **Note:** re-rendering the existing index must produce no diffs beyond genuinely dirty data — eyeball `git diff data/dog-index.md` after a sandbox `apply` (§2.3 pattern, verdicts can be an empty `[]` file) before committing.
-- **Commit summary:** `Claude: sanitize rendered fields and validate verdict input (WP10)`
+`README.md` must state that the supported local runtime is Python 3.14 on
+Ubuntu 26.04. Use that baseline where it removes real compatibility machinery,
+but avoid repository-wide syntax churn.
 
-### WP11 — Run/log retention
-- **Change:** in the launcher, after the run completes:
-  - `find "$RUNS" -maxdepth 1 -type d -name '[0-9]*-[0-9]*' -mtime +30 -exec rm -rf {} +` — guarded by `[ -d "$RUNS" ]`; the name pattern plus `-maxdepth 1` keeps it scoped even if `$RUNS` were empty/misset. Match the `YYYYMMDD-HHMMSS` shape.
-  - Delete the legacy flat `runs/run-2026*` files once, by hand, in this commit's session (they predate the per-run directory layout).
-  - Optional: skip log truncation — logs are 424 KB after six weeks; revisit only if they become a problem (don't gold-plate).
-- **Docs:** README *Key design decisions*: one line stating both retention windows (90 d state, 30 d run artifacts).
-- **Verify:** dry-run the `find` with `-print` instead of `-exec rm` first and eyeball the list; after the next scheduled run, confirm old dirs are gone and the newest survived.
-- **Commit summary:** `Claude: prune run artifacts older than 30 days (WP11)`
+- Invoke the validator as `python3 -m src.write_report` so it uses normal
+  package imports.
+- Remove the `try: from src ... except ModuleNotFoundError: import ...` fallback.
+- Keep `from __future__ import annotations` consistently for now. Python 3.14's
+  default deferred-annotation behavior is not identical to the future import's
+  stringized behavior, so a bulk removal is not a mechanical cleanup.
+- Do not introduce template strings, subinterpreters, free-threading, or other
+  unrelated 3.14 features.
 
-### WP9 — Judge permission allowlist (replaces `--dangerously-skip-permissions`)
-- **Problem:** the judge reads arbitrary scraped web content with unrestricted local authority — prompt injection has file, shell, and git reach. The design needs only a narrow tool set.
-- **Known facts:** the main thread of run `20260705-130000` used exactly `Agent`, `Read`, `ToolSearch`, `WebFetch`, `Write` — **no Bash**. Subagent (Haiku) tool calls do **not** appear in the parent stream, so the browser-MCP tool names must be discovered iteratively: expect Playwright-MCP and/or Claude-in-Chrome tool patterns (`mcp__playwright__*` / `mcp__claude-in-chrome__*`), and refine from denials.
-- **Change:** in `scripts/daily-refresh.sh`, drop `--dangerously-skip-permissions`; grant via `--allowedTools` (or a **tracked** `.claude/settings.json` — prefer the settings file for auditability; check `claude --help` of the installed version for exact syntax): `Read`, `WebFetch`, `Agent`/`Task`, `ToolSearch`, `Write` scoped to the runs directory (pattern-scoped permission, e.g. `Write(runs/**)`), and the browser-MCP tool patterns. **No Bash**: scheduled runs always have their artifacts (the launcher runs collect first); the prompt's "generate them yourself" escape hatch is interactive-only and runs under interactive permissions — add that qualifier to the prompt in this commit (coordinates with WP13's rewording; whichever lands second reconciles).
-- **Verify (paid, §6):** one manual launcher run. Pass = non-empty `verdicts.json`; report present; **zero permission-denied events** in `run.stream.jsonl` (grep for `permission`/`denied`); at least one `NEEDS_BROWSER` shelter produced browser results. On failure: revert the script/settings commit immediately (single commit — clean revert), record the denied tool names in the revert commit's paragraph, and retry another day with the amended list. Budget each attempt ≤ $2.50; expect 1–3 attempts.
-- **Docs:** README *Key design decisions* — replace the implicit skip-permissions posture with the allowlist and its rationale.
-- **Commit summary:** `Claude: run the judge under a tool allowlist (WP9)`
+## 3. Work-package order
 
-### WP13 — Residual documentation fixes (one commit, last)
-Pre-existing drift not owned by the WPs above — skip anything a prior WP already fixed:
-- **README:** add a **Test** section (`/usr/bin/python3 -m unittest discover -s tests`; must pass on stock 3.9.6). Remove the "code-delegation refactor" clause from *Key design decisions* (§3.4). Add to *Assumptions*: cross-listing duplicates accepted; unknown species counts as a dog (`base.is_dog`); aggregator searches are NSW-only (`state_id=1`) so ACT coverage rests on the three ACT sources; a missing `state.json` silently rebuilds from empty; dropped sources should clean up their state entries (doggierescue precedent, 9faef8d).
-- **`data/dog-index.md`** (human region, outside the markers — edit directly): the "Monitored shelters" link points at `shelters.json` (broken; resolves inside `data/`) — fix to `../config/shelters.json`; "cron job" → launchd agent.
-- **`prompts/daily-refresh.md`:** reword the state constraint per §3.7 — e.g. "Never edit `data/state.json` or `data/dog-index.md` yourself; if this run's artifacts are missing (interactive use only), generate them by running the pipeline — the pipeline, not you, writes state."
-- **`scripts/daily-refresh.sh`:** remove the undefined "Phase 2" numbering from comments.
-- **`src/parse_usage.py`:** Google-style docstring for `main()`.
-- **Commit summary:** `Claude: fix accumulated documentation drift (WP13)`
+| WP | Title | Depends on | Status |
+|---|---|---|---|
+| WP1 | Make the verdict contract complete and represent deferred work | — | TODO |
+| WP2 | Make apply fail-fast and keep outputs consistent | WP1 | TODO |
+| WP3 | Use real Ubuntu network readiness in the user service | — | TODO |
+| WP4 | Apply scoped Python 3.14 cleanup and close HTTP errors | WP1 | TODO |
+| WP5 | Adversarial review and isolated end-to-end verification | WP1–WP4 | TODO |
 
----
+WP1 and WP2 protect state and must land before any new paid/live judge run. WP3
+and WP4 may be implemented independently after WP1, but the simplest execution
+order is WP1 → WP2 → WP3 → WP4 → WP5.
 
-## 5. Parameters (single source of truth for the knobs above)
+## 4. WP1 — complete verdict contract and deferred outcome
 
-| Knob | Value |
-|---|---|
-| Browser-dog staleness threshold (WP3) | 3 days |
-| Recheck HTTP mapping (WP2) | 404/410 → flag `http_gone`; adopted status → `status_adopted`; unparseable detail → `detail_unparseable`; 403/5xx/timeout/DNS → transient, no flag |
-| `recheck_reason` values | `http_gone`, `status_adopted`, `detail_unparseable`, `vanished_from_list` (dies with WP12), `stale_browser` |
-| Lock contention (WP5) | skip run, log line; stale lock auto-broken after 4 h |
-| Run-artifact retention (WP11) | 30 days |
-| State retention (existing) | 90 days — unchanged |
-| Judge budget, incl. verification runs | $2.50 (`--max-budget-usd 2.5`) — unchanged |
-| Field length cap (WP10) | 200 chars |
-| Fragment slug rule (WP7) | dog name, lowercased, non-alphanumeric runs → single `-` |
+### Purpose
 
-## 6. Paid verification-run protocol (WP9 only)
+Align the prompt, schema, validator, and state merge so every pending dog has an
+explicit outcome while an inconclusive browser recheck remains untouched.
+Also close the raw-URL and browser-source lifecycle gaps in the same response
+boundary, which should remain the single validation point.
 
-1. Run well clear of the 13:00 window; confirm nothing is running (`pgrep -f daily-refresh.sh`; after WP5 the lock also enforces this).
-2. Invoke `scripts/daily-refresh.sh` directly from the repo root. Cost is bounded by the built-in $2.50 cap.
-3. Pass criteria: non-empty `runs/<ts>/verdicts.json`; `report.txt` present; no permission-denied / auth / watchdog lines in `run.stream.jsonl` or `logs/daily-refresh.log`; browser results for ≥1 `NEEDS_BROWSER` shelter; clean `apply`.
-4. A verification run is a *real* run — it may legitimately commit and push an "Automated run" commit. Accepted.
-5. On failure, revert your WP9 commit before the next 13:00 slot.
+### Required changes
 
-## 7. Out of scope — do not do
+#### `prompts/daily-refresh.md`
 
-- Cross-listing dedup (owner accepted duplicates), including any fuzzy matching.
-- Raising/lowering the $2.50 budget cap.
-- The "code-delegation refactor" / feeding known URLs to browser subagents to cut re-judging cost.
-- CI (explicitly dropped), lint configs, packaging (`pyproject.toml`), new dependencies, pytest.
-- robots.txt handling; changing scrape cadence, delays, or page caps.
-- Rewriting state to another format; changing the `runs/`+`logs/` gitignore policy.
-- Any change letting the LLM write files other than `verdicts.json`.
-- Decoupling the judge from Claude Code (engine adapters, etc.) — discussed with the owner and explicitly deferred.
+- State unambiguously that the response must include exactly one verdict object
+  for **every** `pending.json` entry, including every rejected dog.
+- Explain that counts in `report` do not substitute for verdict objects.
+- Add `deferred` for an inconclusive `maybe_adopted` browser check. Require the
+  agent to copy the original pending fields, set `removed: false`, and preserve
+  the URL; the deterministic merge will ignore the record.
+- Prohibit `deferred` for ordinary new candidates and browser discoveries.
+- Change the report template to include a deferred count, for example:
+  `Refresh complete: X qualified, Y rejected, Z confirmed adopted, D deferred,
+  W shelters needing browser.`
+- Retain the rule that unreachable sources are reported for human attention.
 
----
+#### `config/verdicts.schema.json`
 
-## Appendix A — Known minor issues deliberately left (context, not tasks)
+- Add `deferred` to the `verdict` enum.
+- Change `source_kind` from nullable text to a non-empty string. Current pending
+  artifacts already use `petrescue` or `browser`, so this does not reject known
+  production input.
+- Keep the strict Codex schema requirements: every declared property remains in
+  `required`, and `additionalProperties` remains false.
+- Do not rely on JSON Schema `format: uri` for security or identity. Raw URL
+  safety and canonical equality belong in Python, where they can be tested and
+  shared with apply.
 
-- `_detect_status` matches any `>Adopted<` / `>On hold<` text node anywhere on a detail page — false-positive risk on template drift; acceptable.
-- `apply_verdicts` can create verdict-less orphan entries if the judge omits `verdict` on a new URL (entry is then neither pending nor rendered). WP10's optional defaulting addresses it; otherwise accepted.
-- `canonical()` doesn't sort query params (two param orderings won't dedup) — unobserved in practice.
-- Partial-pagination failure (page 3 of N dies) leaves `status=OK`; dogs on unfetched pages are protected from false flagging only by the detail recheck running first. If WP12 touches nearby code, a comment there is welcome; no behavior change wanted.
-- 109 orphaned `source_kind: "doggierescue"` entries from the deliberate parser removal (9faef8d) age out via the 90-day prune; no action.
-- Operational history that shaped the design (don't undo): 2026-06-14 hang → watchdog; 2026-06-22→07-04 silent auth outage → no-verdicts notification; 2026-07-04 budget abort at $2.51 → cap stays anyway (§3.4).
+#### `src/store.py`
 
-## Appendix B — Verified healthy; don't re-litigate
+- Add a `DEFERRED` constant next to `PENDING`, `QUALIFIED`, and `REJECTED`.
+- Make the existing verdict URL predicate public (for example,
+  `valid_verdict_url`) without changing its accepted URL policy.
+- In `apply_verdicts`, validate the raw URL with that shared predicate.
+- Branch on `deferred` before looking up or mutating the state entry. A deferred
+  record must be a complete no-op.
+- For a genuinely new entry, store `source_kind: "browser"` rather than trusting
+  response provenance. The validator should normally make this defense-in-depth
+  behavior unnecessary.
+- Preserve existing behavior for qualified, rejected, and removed records.
 
-- Atomic state writes (`tempfile` + `os.replace`), sorted/indented JSON for stable diffs.
-- Fail-loud parser philosophy: `ParseError` on drift, `EMPTY_OK` distinct from `OK`, per-source manifest; registry host-matching rejects lookalike domains (`sydneypetrescue.com.au` ≠ `petrescue.com.au`).
-- Layered vanish detection with shelter-outage scoping and detail-page override (ff44827) — WP12 simplifies it because it became redundant, not because it was broken.
-- Membership-gated auto-commit verified against git history; watchdog + notification address both observed failure modes.
-- Tests: 59 green on the launcher's own interpreter; fixtures and regression coverage are good; docstring discipline holds (one gap → WP13).
-- `CLAUDE.md → AGENTS.md` symlink keeps a single source of truth.
+All modified/new non-test functions need Google-style docstrings.
+
+#### `src/write_report.py`
+
+- Validate every raw verdict URL with `store.valid_verdict_url` before applying
+  canonicalization. This prevents whitespace or an uppercase scheme from
+  passing coverage and then being ignored by merge.
+- Continue comparing canonical keys for duplicates and pending coverage.
+- Determine the canonical pending-key set once. For each response entry not in
+  that set, require `source_kind == "browser"` and reject `deferred`.
+- Permit `deferred` only when the matching pending record has a truthy `recheck`
+  field, and count it as covered. Reject deferred outcomes for ordinary pending
+  candidates.
+- Return concise errors with counts and a small deterministic sample of URLs;
+  never dump all scraped data into logs.
+- Keep report writing after all validation so failure cannot leave a report that
+  makes the run look healthy.
+
+### Required tests
+
+Update tests in source-function order and follow `AGENTS.md` import conventions.
+
+`tests/test_write_report.py`:
+
+- Complete qualified/rejected coverage succeeds.
+- A pending deferred URL succeeds.
+- A deferred ordinary pending candidate with no recheck fails.
+- A deferred extra/browser-discovery URL fails.
+- Missing and duplicate canonical URLs still fail.
+- Leading/trailing whitespace and uppercase-scheme variants fail even when they
+  canonicalize to a pending URL.
+- An extra URL with `source_kind: null`, empty, or non-browser fails.
+- A valid extra URL with `source_kind: "browser"` succeeds.
+
+`tests/test_store.py`:
+
+- Deferred on an existing recheck leaves the complete entry unchanged (compare
+  a deep copy, including `last_seen` and both recheck fields).
+- A new record with null/missing source kind is stored as browser when it reaches
+  the defense-in-depth merge path.
+- The public URL validator rejects the exact malformed variants rejected by
+  response validation.
+
+Add a small schema-contract test using `json.load` from the standard library to
+assert that `deferred` is in the enum and `source_kind` is non-nullable. Do not
+add a third-party JSON Schema dependency merely for this assertion.
+
+### Documentation
+
+Update `README.md` architecture/dataflow and fail-loud sections to describe:
+
+- exactly-one outcome per pending URL;
+- intentional deferred outcomes;
+- deferred entries remaining unchanged for retry;
+- browser discoveries requiring browser lifecycle metadata.
+
+### Acceptance criteria
+
+- The validator and merge use the same raw URL safety rule.
+- A deferred recheck survives byte-for-byte at the entry level.
+- No schema-valid browser discovery can be stored with a null source kind.
+- The retained partial response from `runs/20260801-110350` is still rejected
+  for its 180 missing URLs.
+- Unit tests and diff checks pass.
+
+Suggested independent commit:
+
+```text
+Codex: make verdict coverage explicit and deferrable
+
+Add an intentional deferred outcome for inconclusive rechecks, enforce one safe canonical verdict per pending URL, and require browser lifecycle metadata for newly discovered dogs.
+```
+
+## 5. WP2 — fail-fast apply and consistent output preparation
+
+### Purpose
+
+Prevent a render/write failure from being downgraded to a warning, entering Git
+logic, or making systemd report success. Move failure-prone rendering before
+state persistence and make index replacement atomic.
+
+### Required changes
+
+#### `src/pipeline.py`
+
+- Reorder `apply` so it reads the current index and renders the complete updated
+  Markdown before saving state.
+- Keep all verdict application in memory until rendering succeeds.
+- Use a dedicated atomic index writer: write to a temporary file in the index's
+  directory, flush/close it, and `os.replace` it onto the destination. The
+  helper belongs in the module that owns index persistence; do not overload a
+  parsing/rendering function with disk orchestration.
+- Retain `store.save_state` for atomic state replacement.
+- Clearly document that two independent atomic replacements are not a
+  cross-file transaction. A failure must propagate to the caller.
+- Do not catch broad exceptions merely to log and continue.
+
+Prefer a small pure preparation function if needed for testing, such as one that
+returns `(updated_state, updated_markdown)` from loaded inputs. Do not introduce
+classes or a generalized transaction framework.
+
+#### `scripts/daily-refresh.sh`
+
+- Treat a nonzero Codex exit as fatal even if a last message happens to exist.
+- Invoke response validation only after Codex exits zero.
+- Replace the warning-only apply command with an explicit fatal branch. On
+  apply failure, log `FATAL`, exit nonzero, and do not run index-check, Git add,
+  commit, push, report mirroring, or the success footer.
+- Keep the EXIT trap so the run lock is released.
+- Ensure the final success exit code represents the entire pipeline, not only
+  the earlier Codex process.
+
+### Required tests
+
+`tests/test_pipeline.py`:
+
+- If `render.render_index` raises, state and index files remain unchanged.
+- A successful apply updates both state and index.
+- The index persistence helper never leaves a truncated destination when its
+  write/replace preparation fails.
+- A deferred verdict remains untouched through the full pipeline apply path.
+
+Launcher verification:
+
+- Exercise the fatal apply branch with a controlled fake `PYTHON_BIN` or a
+  disposable clone. Assert nonzero exit, released lock, and no new Git
+  commit. Keep this test local and deterministic; it must not call Codex or the
+  network.
+- If a maintainable automated shell harness would require invasive production
+  hooks, document and run the exact manual reproduction instead of adding test-
+  only behavior to the launcher.
+
+### Documentation
+
+Update `README.md` so “fail loud” covers deterministic apply/render failures,
+not only missing judge output. State explicitly that failed runs never enter
+automatic Git mutation.
+
+### Acceptance criteria
+
+- No apply exception can reach line-of-business Git commands.
+- Render failure before persistence leaves both tracked files unchanged.
+- Each individual output write is atomic.
+- `systemd` receives a nonzero service result for Codex, validation, apply, or
+  persistence failure.
+- All unit/static checks pass.
+
+Suggested independent commit:
+
+```text
+Codex: fail the refresh when apply cannot complete
+
+Prepare rendered output before persistence, replace the index atomically, and stop the launcher before Git whenever Codex or deterministic apply fails.
+```
+
+## 6. WP3 — real user-service network readiness
+
+### Purpose
+
+Ensure a persistent catch-up run does not start before NetworkManager has a
+usable connection. A user manager cannot order against the system manager's
+`network-online.target` on this host.
+
+### Required changes
+
+#### `deploy/dog-finder-daily-refresh.service`
+
+- Remove `Wants=network-online.target` and `After=network-online.target`.
+- Add `ExecStartPre=/usr/bin/nm-online -q -t 300` before `ExecStart`.
+- Keep the 90-minute service timeout for the main refresh. Confirm whether
+  `TimeoutStartSec` includes `ExecStartPre` on the installed system; if it does,
+  the combined five-minute network wait plus refresh must still fit comfortably
+  under the existing cap.
+- Do not suppress `nm-online` failure. It should make the unit fail before the
+  launcher mutates state.
+
+#### `README.md`
+
+- Record NetworkManager and `/usr/bin/nm-online` as Ubuntu deployment
+  prerequisites.
+- Explain the five-minute bounded wait and how to inspect a pre-start failure in
+  `journalctl --user`.
+- Explain that the current timer has no immediate retry policy: a failed network
+  preflight waits for the next timer activation or a manual service start. Do
+  not add `Restart=` behavior without an explicit owner decision.
+- Retain the explicit Australia/Sydney timer semantics and lingering guidance.
+
+### Verification
+
+Run:
+
+```bash
+command -v nm-online
+nm-online -q -t 5
+systemd-analyze verify \
+  deploy/dog-finder-daily-refresh.service \
+  deploy/dog-finder-daily-refresh.timer
+systemd-analyze calendar '*-*-* 13:00:00 Australia/Sydney'
+```
+
+Also confirm that the unit file no longer references `network-online.target`.
+Do not disable networking to test failure on the production host. If an offline
+test is needed, run the unit in an isolated VM/container or substitute a known
+failing `ExecStartPre` only in a temporary copied unit.
+
+### Acceptance criteria
+
+- The unit has no dependency on a missing user target.
+- A missing connection fails before `scripts/daily-refresh.sh` starts.
+- Unit and calendar validation pass.
+- Deployment documentation matches the actual Ubuntu dependency.
+
+Suggested independent commit:
+
+```text
+Codex: wait for NetworkManager before daily refresh
+
+Replace the ineffective user-level network target with a bounded nm-online preflight and document the Ubuntu network dependency.
+```
+
+## 7. WP4 — scoped Python 3.14 cleanup and resource hygiene
+
+### Purpose
+
+Use the new runtime baseline to remove compatibility machinery that no longer
+serves the launcher, while fixing the HTTP response resource warnings visible
+under Python 3.14.
+
+### Required changes
+
+#### Runtime documentation
+
+- Add Python 3.14 to the `README.md` prerequisites and test section.
+- State that Ubuntu's system `python3` is the supported interpreter for the
+  systemd service.
+- Keep the standard-library-only dependency policy.
+
+#### Module invocation
+
+- Change the launcher from executing `src/write_report.py` by path to:
+  `"$PYTHON_BIN" -m src.write_report ...`.
+- In `src/write_report.py`, replace the conditional import with the normal
+  package import (`from src import dedup`, plus the shared validation owner
+  chosen in WP1).
+- Remove the direct-file invocation compatibility test. Existing `main()` tests
+  cover behavior; optionally retain one concise subprocess test using
+  `python3 -m src.write_report` if it adds unique launcher-contract coverage.
+- Do not convert unrelated modules or tests to `pathlib` solely for style.
+
+#### HTTP error cleanup
+
+- In `src/fetch.py`, close every caught `urllib.error.HTTPError` after recording
+  its code/message, including retry paths. Use `try/finally` if needed so future
+  branch changes cannot leak the response object.
+- Update `tests/test_fetch.py` so each attempt gets its own controlled error
+  object and cleanup is deterministic.
+- Add a test proving an HTTP error response is closed for both permanent 4xx and
+  retried 5xx paths. Preserve existing retry/status assertions.
+
+### Verification
+
+Run the complete suite normally and with resource warnings visible:
+
+```bash
+python3 -m unittest discover -s tests
+PYTHONDEVMODE=1 python3 -m unittest discover -s tests
+```
+
+The second command must emit no `ResourceWarning` or unraisable cleanup output.
+
+### Acceptance criteria
+
+- `src.write_report` has one package import path and the launcher uses `-m`.
+- README names Python 3.14 as the runtime.
+- Both 4xx and 5xx HTTP error objects are closed.
+- The suite is clean under Python development mode.
+- No broad annotation or syntax churn is included.
+
+Suggested independent commit:
+
+```text
+Codex: align scripts with Python 3.14 runtime
+
+Use package-style validator invocation, document the Ubuntu Python baseline, and close HTTP error responses so the suite runs without resource warnings.
+```
+
+## 8. WP5 — final review and isolated end-to-end verification
+
+### Purpose
+
+Prove the final code—not the pre-gate intermediate launcher—can collect live
+inputs, obtain a complete schema-valid Luna response, use Firefox MCP, apply the
+result, and finish successfully without mutating or pushing from the primary
+worktree.
+
+### Preflight
+
+1. Complete WP1–WP4 and ensure each intended commit is clean.
+2. Follow `AGENTS.md`: run an adversarial GPT-5.6 Sol high-thinking subagent
+   review. Fix every blocking and trivial issue; repeat until no blockers remain.
+3. Run the full validation matrix in section 9.
+4. Confirm the global MCP configuration still matches `README.md`:
+
+   ```bash
+   codex mcp get playwright
+   npx -y @playwright/mcp@0.0.78 --version
+   ```
+
+5. Confirm no refresh is active and avoid the production 13:00 window.
+6. Confirm that the execution request explicitly authorizes the paid live run.
+   If it does not, stop and ask the owner. Remind the owner that the judge uses
+   `--dangerously-bypass-approvals-and-sandbox` and consumes model/browser
+   resources. Any expansion in tools or authority requires separate approval.
+
+### Disposable-clone protocol
+
+Use a standalone local clone so collection, state/index mutation, remote
+configuration, and any automatic data commit cannot touch or push the primary
+repository:
+
+```bash
+VERIFY_PARENT="$(mktemp -d)"
+VERIFY_REPO="$VERIFY_PARENT/dog-finder"
+git clone --no-hardlinks "$PWD" "$VERIFY_REPO"
+git -C "$VERIFY_REPO" switch --detach HEAD
+git -C "$VERIFY_REPO" remote set-url --push origin DISABLED
+```
+
+Verify that the clone has its own Git directory and that only its push URL is
+disabled before running. Do not use `git worktree`: linked worktrees normally
+share repository configuration, so changing `remote.origin.pushurl` there could
+silently disable pushes in the primary checkout. Do not reuse the primary
+repository as the test target. Run the disposable clone's launcher under a
+90-minute cgroup or equivalent bounded supervision. Do not add a second in-
+script watchdog to production code.
+
+Preserve and inspect the verification artifacts before removing the clone:
+
+- Launcher/service exit is zero.
+- `pending.json`, `fetch_manifest.json`, `verdicts.json`, report, and event
+  stream all exist and are non-empty where required.
+- The response contains exactly one canonical outcome for each pending URL.
+- Any deferred records correspond to pending URLs and leave their state entries
+  unchanged after apply.
+- All extra URLs have `source_kind: "browser"`.
+- The event stream contains `turn.completed`, has no approval cancellation, and
+  shows successful Playwright calls for browser coverage.
+- The report counts equal the actual outcome counts in `verdicts.json`.
+- `pipeline apply` completes and the disposable index/state are consistent.
+- A data-membership change may create a detached local commit, but push must be
+  disabled and expected to fail harmlessly.
+- The primary worktree remains byte-for-byte clean.
+
+If Luna again emits a prose count without all verdict objects, the test fails.
+Do not weaken the gate or manually fabricate the missing output. Capture the
+event stream/report and stop for an owner decision about one bounded repair
+retry, deterministic batching, or a model change.
+
+After recording the evidence, remove the disposable clone using explicit paths.
+Do not delete it until the failure/success artifacts have been inspected.
+
+### Production deployment boundary
+
+The final live test does not authorize installing/enabling the timer or pushing
+the implementation commits. If the owner later asks to deploy:
+
+1. Copy the reviewed service/timer files to `~/.config/systemd/user/`.
+2. Run `systemctl --user daemon-reload`.
+3. Verify the timer and next Sydney elapse before enabling it.
+4. Enable lingering only if logged-out operation is required.
+5. Monitor the first production service result and journal.
+
+### Acceptance criteria
+
+- Final adversarial review has no blockers.
+- The isolated full run exits zero under the committed completeness gate.
+- Browser, deferred, apply, report, and count invariants all hold.
+- No primary-worktree data or remote branch is changed by verification.
+- The implementing agent reports exact commits, checks, run timestamp, verdict
+  counts, deferred count, browser failures, and any remaining operational risk.
+
+## 9. Full validation matrix
+
+Run this matrix after every work package that touches the corresponding area,
+and in full before WP5:
+
+```bash
+python3 -m unittest discover -s tests
+PYTHONDEVMODE=1 python3 -m unittest discover -s tests
+bash -n scripts/daily-refresh.sh
+python3 -m json.tool config/verdicts.schema.json >/dev/null
+systemd-analyze verify \
+  deploy/dog-finder-daily-refresh.service \
+  deploy/dog-finder-daily-refresh.timer
+systemd-analyze calendar '*-*-* 13:00:00 Australia/Sydney'
+git diff --check
+git status --short
+```
+
+Additional targeted checks:
+
+- Feed the retained 191-pending/11-verdict response to the validator; it must
+  fail with 180 missing pending URLs.
+- Feed a pending URL represented with leading whitespace or an uppercase scheme;
+  raw URL validation must reject it even though canonicalization could match.
+- Feed an inconclusive stale-browser recheck as `deferred`; validation must pass
+  and apply must leave the original state entry unchanged.
+- Feed an extra browser discovery with null source kind; validation must fail.
+- Force render failure in a unit test; neither tracked output may change.
+- Force apply failure in launcher verification; no Git command may run and the
+  exit status must be nonzero.
+
+## 10. Review and version-control protocol
+
+Before each functionally independent commit:
+
+1. Re-read `AGENTS.md` and this plan.
+2. Run the relevant validation matrix.
+3. Inspect `git diff` and `git diff --check`.
+4. Run the required adversarial GPT-5.6 Sol high-thinking subagent review.
+5. Fix all blocking and trivial findings, then repeat review as required.
+6. Stage only the files in that work package. Never stage `data/state.json`,
+   `data/dog-index.md`, `runs/`, logs, browser snapshots, or unrelated owner
+   changes.
+7. Use the exact commit-message structure required by `AGENTS.md`, with no
+   `Co-Authored-By` line.
+
+Do not push unless the owner explicitly asks. The disposable verification clone
+must have its push URL disabled before the live launcher runs.
+
+## 11. Stop conditions and final hand-over
+
+Stop and ask the owner rather than guessing if any of these occurs:
+
+- A schema accepted by Codex cannot represent `deferred` under the strict-output
+  restrictions of the installed CLI/model.
+- The complete response exceeds model limits or Luna repeatedly omits bulk
+  rejections after the prompt is explicit.
+- NetworkManager is no longer the target host's network manager.
+- Correct apply behavior appears to require a generalized two-file transaction
+  or destructive state rollback.
+- The live test would overlap an active/production refresh.
+- Verification requires enabling the timer, changing MCP tools, broadening
+  filesystem authority, or pushing a branch.
+
+The final report to the owner must include:
+
+- work-package and commit list;
+- tests/static checks and Python version;
+- adversarial-review result;
+- isolated live-run timestamp and exit status;
+- pending, qualified, rejected, adopted, deferred, and extra-browser counts;
+- browser sources that were unreachable;
+- confirmation that primary data and remotes were untouched by verification;
+- any residual risk or explicit follow-up decision.
