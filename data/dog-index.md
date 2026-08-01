@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-07-29
+- **Last refreshed:** 2026-08-01
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -13,6 +13,27 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
 
+### [NEW 2026-08-01] Sweet little Toastie — Yorkshire Terrier, not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1206888
+- **Shelter:** Ozzi Hearts 4 Paws (Cooranbong, NSW)
+- **Status:** available · **Fee:** $950.00 · **Size:** Small
+- **date_indexed:** 2026-08-01
+- Small Yorkshire Terrier in Cooranbong, NSW; explicitly low-shedding and low-odour breed.
+
+### [NEW 2026-07-29] Inka — Poodle (Toy), not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1206486
+- **Shelter:** Wally's Dog Rescue (Mosman, NSW)
+- **Status:** available · **Fee:** $700.00 · **Size:** Small
+- **date_indexed:** 2026-07-29
+- Small female Toy Poodle in Mosman, NSW; explicitly low-shedding and low-odour breed.
+
+### [NEW 2026-07-29] Tika — Poodle (Toy), not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1206489
+- **Shelter:** Wally's Dog Rescue (Mosman, NSW)
+- **Status:** available · **Fee:** $700.00 · **Size:** Small
+- **date_indexed:** 2026-07-29
+- Small male Toy Poodle in Mosman, NSW; explicitly low-shedding and low-odour breed.
+
 ### [NEW 2026-07-19] Piper — Poodle Mix, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1204780
 - **Shelter:** Ozzi Hearts 4 Paws (Bateau Bay, NSW)
@@ -20,47 +41,12 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **date_indexed:** 2026-07-19
 - Small 6-month-old Snoodle (Miniature Schnauzer x Poodle) female, low-shed cross, available in Bateau Bay NSW.  _(verify coat/breed)_
 
-### [NEW 2026-07-18] Eddie — Maltese x Poodle (Toy), not stated, Male
-- **URL:** https://www.petrescue.com.au/listings/1204656
-- **Shelter:** Diamond in the Ruff Rescue (Maitland, NSW)
-- **Status:** adopted · **Fee:** $850.00 · **Size:** Small
-- **date_indexed:** 2026-07-18
-- Toy Maltese x Poodle (maltipoo), both parent breeds low-shedding; small size, Maitland NSW is within range.
-
-### [NEW 2026-07-17] Mimi — Poodle, not stated, Female
-- **URL:** https://www.petrescue.com.au/listings/1204459
-- **Shelter:** Ozzi Hearts 4 Paws (San Remo, NSW)
-- **Status:** available · **Fee:** $950.00 · **Size:** Small
-- **date_indexed:** 2026-07-17
-- Small female Poodle, ~2 years, at Ozzi Hearts 4 Paws, San Remo NSW; low-shedding poodle breed.  _(verify coat/breed, verify drive time)_
-
 ### [NEW 2026-07-13] Winny — Poodle, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1203575
 - **Shelter:** Rovertel Rescue (Orange, NSW)
 - **Status:** on-hold · **Fee:** $1,600.00 · **Size:** Small
 - **date_indexed:** 2026-07-13
 - Small male Poodle in Orange NSW ($1600); confirm Toy or Miniature variety, not Standard.  _(verify coat/breed)_
-
-### [NEW 2026-07-13] Theo — Poodle (Toy) Mix, not stated, Male
-- **URL:** https://www.petrescue.com.au/listings/1203648
-- **Shelter:** Ozzi Hearts 4 Paws (San Remo, NSW)
-- **Status:** adopted · **Fee:** $450.00 · **Size:** Small
-- **date_indexed:** 2026-07-13
-- Small male Toy Poodle mix in San Remo NSW; second parent unspecified — verify coat before contacting.  _(verify coat/breed)_
-
-### [NEW 2026-07-07] Cheeky Boy — Bichon Frise x Poodle (Toy) Mix, not stated, Male
-- **URL:** https://www.petrescue.com.au/listings/1202467
-- **Shelter:** Ozzi Hearts 4 Paws (San Remo, NSW)
-- **Status:** adopted · **Fee:** $1,500.00 · **Size:** Small
-- **date_indexed:** 2026-07-07
-- Male poochon (Bichon Frise × Toy Poodle), small, San Remo NSW, $1,500 adoption fee.
-
-### [NEW 2026-07-07] Tully — Bichon Frise x Poodle (Toy) Mix, not stated, Female
-- **URL:** https://www.petrescue.com.au/listings/1202486
-- **Shelter:** Ozzi Hearts 4 Paws (San Remo, NSW)
-- **Status:** adopted · **Fee:** $1,500.00 · **Size:** Small
-- **date_indexed:** 2026-07-07
-- Female poochon (Bichon Frise × Toy Poodle), small, San Remo NSW, $1,500 adoption fee.
 
 ### [NEW 2026-07-05] Bindi — Maltese X Shih Tzu, approx. 2 years, Female
 - **URL:** https://www.paws.com.au/FosterCare/FosterCareDogs.html#bindi
@@ -96,12 +82,12 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 
 ## Monitored shelters
 
-The daily refresh's scrape targets live in **[shelters.json](../config/shelters.json)** — single source of truth. To add, remove, or correct a shelter, edit that file. The launchd agent reads it directly each run.
+The daily refresh's scrape targets live in **[shelters.json](../config/shelters.json)** — single source of truth. To add, remove, or correct a shelter, edit that file. The systemd timer reads it directly each run.
 
 ---
 
 ## Notes on coverage gaps (from initial sweep)
 
-- Some council/independent sites use JavaScript-rendered listings (BMACC, Sutherland Shire, Campbelltown, Eurobodalla, Dog Rescue Newcastle's own page, ACT DAS, Hawkesbury CAS, Blacktown PetsOnline). The static-fetch sweep returned 403 / empty content on these. **The daily refresh leans on their PetRescue cross-posts** wherever the shelter publishes there; for those that don't (e.g. BMACC, Sutherland Shire's own pages), the launchd agent's subagents will attempt the Chrome MCP if connected and otherwise note the page as `unreachable`.
+- Some council/independent sites use JavaScript-rendered listings (BMACC, Sutherland Shire, Campbelltown, Eurobodalla, Dog Rescue Newcastle's own page, ACT DAS, Hawkesbury CAS, Blacktown PetsOnline). The static-fetch sweep returned 403 / empty content on these. **The daily refresh leans on their PetRescue cross-posts** wherever the shelter publishes there; for those that don't (e.g. BMACC, Sutherland Shire's own pages), the systemd timer uses the configured Playwright MCP and otherwise notes the page as `unreachable`.
 - Aus Poodle Haven's site was returning ECONNREFUSED on 2026-05-19. The daily job will keep retrying.
 - No poodle/doodle-specific rescue groups were found in the PetRescue NSW directory (357 groups checked) beyond what's listed above.
