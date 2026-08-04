@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-08-03
+- **Last refreshed:** 2026-08-04
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -12,6 +12,13 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ## Current candidates
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
+
+### [NEW 2026-08-04] Chocco — Poodle (Toy), not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1207577
+- **Shelter:** RSPCA Illawarra Shelter (Cordeaux Heights, NSW)
+- **Status:** available · **Fee:** $500.00 · **Size:** Small
+- **date_indexed:** 2026-08-04
+- Chocco is a small male Toy Poodle at RSPCA Illawarra Shelter, available for $500.
 
 ### [NEW 2026-08-03] Kong — Poodle (Toy), not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1207419
@@ -53,7 +60,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** PAWS (Providing Animals with Support) (Sydney Metropolitan area)
 - **Status:** available · **Fee:** not stated · **Size:** Toy
 - **date_indexed:** 2026-07-05
-- Toy-sized Maltese–Shih Tzu cross with two explicitly qualifying low-shed parent breeds, available through PAWS in the Sydney metropolitan area.
+- Bindi is a toy-sized female Maltese-Shih Tzu cross, approximately two years old, seeking adoption through PAWS.
 
 ### [NEW 2026-06-25] Benny & Toko — Shih Tzu x Maltese, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1200245
