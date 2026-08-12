@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-08-10
+- **Last refreshed:** 2026-08-12
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -13,12 +13,19 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
 
+### [NEW 2026-08-12] Mia — Maltese, not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1208873
+- **Shelter:** SoCares Charmhaven Animal Care Facility (Charmhaven, NSW)
+- **Status:** available · **Fee:** $1,000.00 · **Size:** Small
+- **date_indexed:** 2026-08-12
+- Mia is a small Maltese at SoCares Charmhaven, matching the low-shedding, low-odour criteria.
+
 ### [NEW 2026-08-10] Chocco — Poodle (Toy), 7 Years, Male
 - **URL:** https://www.rspcansw.org.au/adopt/pet/663993/
 - **Shelter:** RSPCA NSW Rescuoodles program (Illawarra Shelter)
 - **Status:** available · **Fee:** $500 · **Size:** Small
 - **date_indexed:** 2026-08-10
-- Chocco is a small, seven-year-old Toy Poodle at RSPCA NSW Illawarra Shelter.
+- Chocco is a small Toy Poodle at RSPCA Illawarra Shelter, matching the low-shedding, low-odour criteria.
 
 ### [NEW 2026-08-06] Lulu — Shih Tzu, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1207902
@@ -65,7 +72,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ### [NEW 2026-07-29] Tika — Poodle (Toy), not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1206489
 - **Shelter:** Wally's Dog Rescue (Mosman, NSW)
-- **Status:** available · **Fee:** $700.00 · **Size:** Small
+- **Status:** on-hold · **Fee:** $700.00 · **Size:** Small
 - **date_indexed:** 2026-07-29
 - Small male Toy Poodle in Mosman, NSW; explicitly low-shedding and low-odour breed.
 
@@ -81,7 +88,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** PAWS (Providing Animals with Support) (Sydney Metropolitan area)
 - **Status:** available · **Fee:** not stated · **Size:** Toy
 - **date_indexed:** 2026-07-05
-- Bindi is a toy-sized Maltese–Shih Tzu cross, approximately 2 years old, seeking adoption through PAWS.
+- Bindi is a toy-sized Maltese–Shih Tzu cross whose named parents both meet the low-shedding criteria.
 
 ### [NEW 2026-06-10] Marney — Maltese, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1197293
