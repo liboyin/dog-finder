@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-08-13
+- **Last refreshed:** 2026-08-14
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -12,6 +12,27 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ## Current candidates
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
+
+### [NEW 2026-08-14] Kimba — Miniature Poodle, 7 years, Female
+- **URL:** https://www.hunteranimalrescue.com.au/adopt/kimba-chilli-bonded/#kimba
+- **Shelter:** Hunter Animal Rescue (Mount Vincent, NSW)
+- **Status:** available · **Fee:** not stated · **Size:** not stated
+- **date_indexed:** 2026-08-14
+- Kimba is a 7-year-old female Miniature Poodle in Hunter Animal Rescue care near Mount Vincent.
+
+### [NEW 2026-08-14] Kong — Poodle (Toy), not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1209260
+- **Shelter:** RSPCA Sydney Shelter (Yagoona) (Yagoona West, NSW)
+- **Status:** available · **Fee:** $500.00 · **Size:** Small
+- **date_indexed:** 2026-08-14
+- Kong is a small male Toy Poodle at RSPCA Sydney Shelter in Yagoona, NSW.
+
+### [NEW 2026-08-14] Leo — Bichon Frise, not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1209275
+- **Shelter:** RSPCA Sydney Shelter (Yagoona) (Yagoona West, NSW)
+- **Status:** available · **Fee:** $500.00 · **Size:** Small
+- **date_indexed:** 2026-08-14
+- Leo is a small male Bichon Frise at RSPCA Sydney Shelter in Yagoona, NSW.
 
 ### [NEW 2026-08-10] Chocco — Poodle (Toy), 7 Years, Male
 - **URL:** https://www.rspcansw.org.au/adopt/pet/663993/
@@ -81,7 +102,7 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 - **Shelter:** PAWS (Providing Animals with Support) (Sydney Metropolitan area)
 - **Status:** available · **Fee:** not stated · **Size:** Toy
 - **date_indexed:** 2026-07-05
-- Bindi is a toy-sized Maltese–Shih Tzu cross whose named parents both meet the low-shedding criteria.
+- Bindi is a toy-sized Maltese–Shih Tzu cross in PAWS foster care in Sydney.
 
 ### [NEW 2026-06-10] Marney — Maltese, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1197293
