@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-08-22
+- **Last refreshed:** 2026-08-25
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -12,6 +12,20 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ## Current candidates
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
+
+### [NEW 2026-08-24] Mila — Poodle (Toy), not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1210907
+- **Shelter:** SoCares Charmhaven Animal Care Facility (Charmhaven, NSW)
+- **Status:** available · **Fee:** $1,000.00 · **Size:** Small
+- **date_indexed:** 2026-08-24
+- Mila is a small Toy Poodle seeking a home in Charmhaven, NSW.
+
+### [NEW 2026-08-24] Arnie — Poodle (Toy), not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1210936
+- **Shelter:** Rovertel Rescue (Orange, NSW)
+- **Status:** available · **Fee:** $1,800 · **Size:** Small
+- **date_indexed:** 2026-08-24
+- Arnie is a small Toy Poodle available for adoption in Orange, NSW.
 
 ### [NEW 2026-08-22] Maisey — Maltese, not stated, Female
 - **URL:** https://www.petrescue.com.au/listings/1210621
