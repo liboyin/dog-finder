@@ -2,7 +2,7 @@
 
 Daily-refreshed index of small, low-shedding, low-odour dogs available for adoption at shelters within ~4 hours' drive of Sydney CBD (NSW + ACT). Most recently found entries appear first. New additions are marked **[NEW yyyy-mm-dd]**.
 
-- **Last refreshed:** 2026-08-26
+- **Last refreshed:** 2026-08-27
 - **Filter:** Small (≤~10 kg / toy / small) AND a low-shedding, low-odour breed — Toy/Mini Poodle, Bichon, Maltese, Shih Tzu, Havanese, Yorkshire/Silky Terrier, Coton, Bolognese, Lhasa Apso, Mini Schnauzer, Chinese Crested, Bedlington, etc. Crosses qualify only if **every** named parent is low-shed (e.g. maltipoo, schnoodle, poochon ✓; cavoodle, labradoodle, ×pug ✗). Listing must explicitly state breed.
 - **Status legend:** `available` / `on-hold` / `adopted`. Adopted dogs are pruned on each refresh.
 - **Note:** entries dated before 2026-05-24 predate this criteria change and may not meet the size/coat rules above.
@@ -12,6 +12,34 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ## Current candidates
 
 <!-- DOGS:BEGIN (auto-generated from state.json by src/render.py — do not edit) -->
+
+### [NEW 2026-08-27] Wilton — Poodle, 13 years, Male
+- **URL:** https://www.awlnsw.com.au/animal/a3gMo000006qu2gIAA/
+- **Shelter:** AWL NSW Sydney Shelter (Kemps Creek) (Sydney Shelter (Kemps Creek))
+- **Status:** available · **Fee:** $309 · **Size:** Small
+- **date_indexed:** 2026-08-27
+- Senior male Poodle seeking an affectionate home with humans around regularly.  _(verify coat/breed)_
+
+### [NEW 2026-08-27] Ippi — Bedlington Terrier, 10 years old, Female
+- **URL:** https://sydneydogsandcatshome.org/animal/ippi/
+- **Shelter:** Sydney Dogs and Cats Home (Austral, NSW)
+- **Status:** available · **Fee:** $199 · **Size:** Small
+- **date_indexed:** 2026-08-27
+- Small senior Bedlington Terrier looking for a patient, loving home in Austral, NSW.
+
+### [NEW 2026-08-27] Ippi — Bedlington Terrier, not stated, Female
+- **URL:** https://www.petrescue.com.au/listings/1211347
+- **Shelter:** Sydney Dogs and Cats Home (Austral, NSW)
+- **Status:** available · **Fee:** $199.00 · **Size:** Small
+- **date_indexed:** 2026-08-27
+- Small senior Bedlington Terrier seeking a loving home in Austral, NSW.
+
+### [NEW 2026-08-27] Bill — Shih Tzu, not stated, Male
+- **URL:** https://www.petrescue.com.au/listings/1211451
+- **Shelter:** RSPCA Hunter Shelter (Rutherford, NSW)
+- **Status:** available · **Fee:** $500.00 · **Size:** Small
+- **date_indexed:** 2026-08-27
+- Small male Shih Tzu seeking a loving home near Rutherford, NSW.
 
 ### [NEW 2026-08-26] Bill — Shih Tzu, not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1211267
@@ -23,14 +51,14 @@ Daily-refreshed index of small, low-shedding, low-odour dogs available for adopt
 ### [NEW 2026-08-24] Mila — Poodle (Toy), not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1210907
 - **Shelter:** SoCares Charmhaven Animal Care Facility (Charmhaven, NSW)
-- **Status:** available · **Fee:** $1,000.00 · **Size:** Small
+- **Status:** on-hold · **Fee:** $1,000.00 · **Size:** Small
 - **date_indexed:** 2026-08-24
 - Mila is a small Toy Poodle seeking a home in Charmhaven, NSW.
 
 ### [NEW 2026-08-24] Arnie — Poodle (Toy), not stated, Male
 - **URL:** https://www.petrescue.com.au/listings/1210936
 - **Shelter:** Rovertel Rescue (Orange, NSW)
-- **Status:** on-hold · **Fee:** $1,800 · **Size:** Small
+- **Status:** available · **Fee:** $1,800 · **Size:** Small
 - **date_indexed:** 2026-08-24
 - Arnie is a small Toy Poodle available for adoption in Orange, NSW.
 
