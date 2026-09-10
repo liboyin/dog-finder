@@ -4,7 +4,6 @@ This file owns the working principles for this repository. All agents MUST follo
 
 - **AGENTS.md:** concise working principles and required standards.
 - **[Adversarial review skill](.agents/skills/adversarial-review/SKILL.md):** how to conduct review, including dispatch, snapshots, investigation, triage, and reporting.
-- **[PLAN.md](PLAN.md):** the execution plan for in-flight work — work packages, accepted decisions, execution boundaries, and its own maintenance rules.
 - **[README.md](README.md):** current architecture, dataflow, design decisions and assumptions, product intent, and build/test/deploy procedures.
 - **[prompts/daily-refresh.md](prompts/daily-refresh.md):** the contract for the unattended LLM judge — its inputs, the required one-verdict-per-pending-URL coverage, and the browser re-check rules.
 
@@ -37,7 +36,7 @@ Link to the owning document instead of duplicating its procedure. Operational in
 - Import the module under test as `import src.my_module as testee`; call functions as `testee.function_name` and patch its attributes with `patch.object(testee, 'attribute', ...)`. Order test functions to match the source file's function order.
 - Automated tests MUST NOT perform network access, launch a real browser or the Codex CLI, depend on a third-party package, or mutate real repository state, even temporarily. Operate on in-memory structures or a `tempfile`-provided path, never the repository's real `data/state.json`, `data/dog-index.md`, `runs/`, or Git state. Snapshot/restore is permitted only for state the test owns.
 - Any subprocess, temporary directory, or monkeypatch a test creates MUST be cleaned up in that test, including after failures and timeouts.
-- `python3 -m unittest discover -s tests` passing on the Ubuntu 26.04 system Python 3.14 interpreter (`python3`) is the coverage policy; there is no separate coverage tool. Planned changes to test scope belong in PLAN.md. Record unperformed manual checks as limitations.
+- `python3 -m unittest discover -s tests` passing on the Ubuntu 26.04 system Python 3.14 interpreter (`python3`) is the coverage policy; there is no separate coverage tool. Record unperformed manual checks as limitations.
 
 # Validation and Review
 
