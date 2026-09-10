@@ -5,3 +5,7 @@ logs/
 __pycache__/
 *.pyc
 .DS_Store
+
+# AI Harness
+.claude/settings.*.json
+.remember/
