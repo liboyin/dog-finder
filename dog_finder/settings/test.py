@@ -5,6 +5,7 @@ import os
 from .base import *
 
 SECRET_KEY = "test-only-not-for-deployment"
+SEARCH_REGISTRATION_ENABLED = True
 ALLOWED_HOSTS = ["testserver", "localhost"]
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 DATABASES = {

@@ -1,5 +1,6 @@
 """Minimal public landing and operational probes without subscriber data."""
 
+from django.conf import settings
 from django.db import DatabaseError, connection
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
@@ -9,7 +10,7 @@ from django.views.decorators.http import require_safe
 @require_safe
 def home(request: HttpRequest) -> HttpResponse:
     """Render a truthful placeholder while subscriber flows are being built."""
-    return render(request, "home.html")
+    return render(request, "home.html", {"preview": settings.SEARCH_REGISTRATION_ENABLED})
 
 
 @require_safe

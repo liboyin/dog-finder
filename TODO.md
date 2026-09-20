@@ -17,13 +17,17 @@ before implementation. README owns verified setup and current behaviour.
   pytest/Ruff/coverage configuration, local PostgreSQL configuration, CI definition,
   and development documentation. Validation details belong in the implementation handoff.
 
+- S3a completed: validated creation, local confirmation capture, scanner-safe activation,
+  scoped management/cancellation, quota concurrency checks, postcode import, and housekeeping.
+  Production registration stays disabled. See README for the implemented preview boundary.
+
 ## Next tasks
 
 - S2: Validate permitted PetRescue access and benchmark representative DeepSeek matching
   quality/cost within an explicitly allocated evaluation budget. No live source access or
   paid requests are part of scaffolding.
-- S3: Implement subscriber/search models, capability links, quotas, confirmation, editing,
-  recovery, cancellation, expiry, and renewal with concurrency tests.
+- S3b: Extend S3a with editing, link recovery/rotation, address-wide management, renewal,
+  reminders, native one-click unsubscribe, and complete retention/suppression semantics.
 - S4: Add Procrastinate and the durable email-intent/SES event flow; exercise ambiguous
   acceptance, suppression, and cancellation races before enabling delivery.
 - S5: Adapt shared ingestion, source publication, baselines, candidates, and direct AI

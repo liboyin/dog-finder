@@ -1,0 +1,6 @@
+{% extends "subscriptions/base.html" %}
+{% block content %}
+<h1>Dog Finder searches</h1>
+<p>{{ message }}</p>
+<p><a href="{% url 'search-create' %}">Create a search</a></p>
+{% endblock %}

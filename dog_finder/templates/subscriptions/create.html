@@ -1,0 +1,21 @@
+{% extends "subscriptions/base.html" %}
+{% block content %}
+<h1>Find your rescue dog</h1>
+<p>Tell us what you are looking for. Results are an AI-assisted shortlist to check with the shelter, not a guarantee.</p>
+<p>This is a local preview: email is captured in memory and daily matching is not running yet.</p>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <p id="remaining" aria-live="polite"></p>
+  <button type="submit">Create search</button>
+</form>
+<script>
+  const description = document.getElementById('id_description');
+  const remaining = document.getElementById('remaining');
+  function updateRemaining() {
+    remaining.textContent = `${300 - Array.from(description.value.trim()).length} characters remaining`;
+  }
+  description.addEventListener('input', updateRemaining);
+  updateRemaining();
+</script>
+{% endblock %}

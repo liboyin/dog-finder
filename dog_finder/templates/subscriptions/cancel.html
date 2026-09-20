@@ -1,0 +1,6 @@
+{% extends "subscriptions/base.html" %}
+{% block content %}
+<h1>Cancel this search?</h1>
+<p>{{ search.name }}</p>
+<form method="post">{% csrf_token %}<button type="submit">Cancel search</button></form>
+{% endblock %}

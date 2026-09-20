@@ -1,0 +1,18 @@
+{% extends "subscriptions/base.html" %}
+{% block content %}
+{% if search.status == "cancelled" %}
+  <h1>Search cancelled</h1>
+  <p>No further emails will be sent for this search.</p>
+  <a href="{% url 'search-create' %}">Start a new search</a>
+{% else %}
+  <h1>{{ search.name }}</h1>
+  <p>{{ masked_email }}</p>
+  <p>{{ search.description }}</p>
+  <p>{{ search.postcode }} {{ search.state }} · Interstate adoption: {{ search.interstate|yesno:"Yes,No" }}</p>
+  <p>Expires: {{ search.expires_at|date:"j F Y" }}</p>
+  <p>Last email: no match emails sent yet.</p>
+  <p>Source baseline pending. Existing listings will not be sent as a catch-up catalogue.</p>
+  <p>Daily matching is not running in this preview. Once available, emails arrive only when new dogs match.</p>
+  <a href="{% url 'search-cancel' token %}">Cancel search</a>
+{% endif %}
+{% endblock %}

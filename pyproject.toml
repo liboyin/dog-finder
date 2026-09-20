@@ -44,7 +44,7 @@ select = ["E4", "E7", "E9", "F", "I", "UP"]
 [tool.coverage.run]
 branch = true
 source = ["dog_finder"]
-omit = ["dog_finder/wsgi.py", "dog_finder/settings/*"]
+omit = ["dog_finder/wsgi.py", "dog_finder/settings/*", "dog_finder/subscriptions/migrations/*"]
 
 [tool.coverage.report]
 show_missing = true

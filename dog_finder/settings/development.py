@@ -5,6 +5,7 @@ import os
 from .base import *
 
 DEBUG = True
+SEARCH_REGISTRATION_ENABLED = True
 SECRET_KEY = "development-only-not-for-deployment"
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
 DATABASES = {

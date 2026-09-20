@@ -1,8 +1,9 @@
 # Dog Finder
 
 Daily adoption alerts for Australian rescue dogs. The SaaS is being built: the current
-application provides a landing page, health probes, and a tested development scaffold.
-Registration, matching jobs, and email delivery are not implemented yet.
+application provides a local search creation/confirmation/cancellation preview, health
+probes, and a tested development scaffold. Public registration is closed; matching and
+live email delivery are not implemented yet.
 
 Product behaviour lives in [USER_STORIES.md](USER_STORIES.md), architecture and budget
 in [DESIGN.md](DESIGN.md), and implementation work in [TODO.md](TODO.md).
@@ -44,6 +45,64 @@ availability, not the health of the future daily processing pipeline.
 Local email uses Django's in-memory backend. No source fetches, AI calls, email sends,
 or background jobs start automatically. Procrastinate and provider adapters will be
 added with their first working features.
+
+## Subscriber preview
+
+After applying migrations, load a postcode reference from an operator-downloaded
+[GeoNames Australian postal archive](https://download.geonames.org/export/zip/AU.zip):
+
+```sh
+uv run python manage.py load_postcodes /path/to/AU.zip
+```
+
+The command reads only the local archive and validates it before atomically replacing
+the postcode/state table. No test downloads this reference. The GeoNames dataset is
+attributed in the preview pages under CC BY 4.0; its source README notes that accuracy
+and completeness are not guaranteed. Postcodes spanning states require an explicit
+choice. See [GeoNames data information](https://download.geonames.org/export/zip/).
+
+The archive checked on 2026-09-21 yielded 3,188 distinct postcode/state pairs (SHA-256
+`8318f2627f3fb6d22cf5ce89ba8fcb6c7b7b872220fc4647dcac890eff66db81`). This is
+provenance for that import, not a claim that future downloads are identical. Only
+postcode/state pairs are currently imported; distance centroids remain future work.
+
+Visit `/search/new/` in development. The form validates email, postcode/state, explicit
+interstate choice, name, and a trimmed description of at most 300 characters. Confirmation
+emails are captured in the Django process's in-memory outbox, exercised end to end by
+pytest; they do not arrive in a real inbox, and there is no public mailbox preview route.
+The completed SES workflow is needed for normal browser-to-inbox use. Do not log or
+publish captured private links to work around this boundary.
+
+Confirmation requires a CSRF-protected button press, is valid for seven days, and is
+consumed only on successful activation. Activation starts a 90-day term and leaves source
+baselining pending. An unguessable management link shows one search and supports explicit
+cancellation. GET requests do not activate or cancel; cancellation removes stored criteria.
+
+Transactions enforce five active searches per address and 250 distinct active subscribers.
+Additional searches for existing subscribers do not need another subscriber slot. Expired
+searches do not occupy a slot. UTC-day counters permit three confirmation emails per
+address and, initially, 20 valid requests per source IP. The IP is stored only as a keyed
+hash. At most 750 pending searches are retained. Proxies must supply a trustworthy peer
+address before public launch; the preview uses `REMOTE_ADDR`, not forwarded headers.
+Suppression and quota outcomes share the same public receipt.
+
+Run housekeeping daily once the lifecycle is operated outside tests:
+
+```sh
+uv run python manage.py purge_searches
+```
+
+It deletes abandoned seven-day confirmations, cancelled searches, and expired searches
+beyond the 30-day grace period, without touching other searches at the same address.
+Same-day email counters and suppressed addresses are retained. A production scheduler
+and minimal durable suppression records are part of subsequent work; no timer is installed
+by this feature. Editing, recovery, renewal/reminders, all-search management, native one-click
+unsubscribe, and durable provider delivery also remain outstanding before launch.
+
+Private pages send `no-store` and `no-referrer`. Django logs redact private `/s/` requests.
+Any future reverse proxy or access/error logging service must likewise omit or redact
+these paths and must not capture form bodies. Production settings disable registration;
+the current creation service also rejects any email backend other than local capture.
 
 ## Tests and checks
 
@@ -88,6 +147,8 @@ through configuration and startup smoke checks; deployment must repeat those che
 with its actual environment. Retained extraction code in `src/` has its own tests and
 is outside the new service coverage and Ruff gates until migrated. No coverage claim is
 made for it. CI runs the full suite using PostgreSQL 16 and the locked dependencies.
+Generated subscription migrations are excluded from Python coverage; migration application,
+rollback, and reapplication are verified against a disposable PostgreSQL database.
 
 ## Production boundary
 
