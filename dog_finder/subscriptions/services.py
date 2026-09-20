@@ -123,3 +123,39 @@ def cancel(search_id: uuid.UUID, now: datetime) -> Search | None:
     search.name = search.description = search.postcode = search.state = ""
     search.save()
     return search
+
+
+@transaction.atomic
+def edit(
+    search_id: uuid.UUID,
+    management_version: uuid.UUID,
+    criteria: dict,
+    now: datetime,
+) -> str:
+    """Save validated EditSearchForm data without overwriting a newer edit.
+
+    Recheck the credential and lifecycle under the shared lock. Matching changes
+    advance the criteria revision; renames preserve it and the existing baseline.
+    No matching queues or source snapshots exist in this preview yet.
+    """
+    Capacity.objects.select_for_update().get(pk=1)
+    search = Search.objects.select_related("subscriber").filter(pk=search_id).first()
+    if (
+        search is None
+        or search.management_version != management_version
+        or search.status != "active"
+        or search.expires_at <= now
+        or search.subscriber.suppressed
+    ):
+        return "This search cannot be edited. It may be expired, cancelled, or unavailable."
+    if search.edit_version != criteria["edit_version"]:
+        return "This search changed since you opened the form. Reload before editing again."
+    matching_fields = ("postcode", "state", "interstate", "description")
+    if any(getattr(search, field) != criteria[field] for field in matching_fields):
+        search.criteria_revision += 1
+        search.baseline_pending = True
+    for field in ("name", *matching_fields):
+        setattr(search, field, criteria[field])
+    search.edit_version = uuid.uuid4()
+    search.save()
+    return ""

@@ -59,6 +59,8 @@ class Search(models.Model):
     confirmation_version = models.UUIDField(default=uuid.uuid4)
     management_version = models.UUIDField(default=uuid.uuid4)
     baseline_pending = models.BooleanField(default=True)
+    criteria_revision = models.PositiveIntegerField(default=1)
+    edit_version = models.UUIDField(default=uuid.uuid4)
 
     class Meta:
         """Keep lifecycle queries indexed and reject unsupported states."""

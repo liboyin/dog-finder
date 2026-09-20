@@ -50,3 +50,10 @@ class SearchForm(forms.Form):
             else:
                 self.add_error("state", "This postcode spans states. Choose your home state.")
         return cleaned
+
+
+class EditSearchForm(SearchForm):
+    """Reuse criteria validation without allowing the owner address to change."""
+
+    email = None
+    edit_version = forms.UUIDField(widget=forms.HiddenInput)

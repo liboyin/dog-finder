@@ -9,7 +9,7 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods, require_safe
 
 from . import services, tokens
-from .forms import SearchForm
+from .forms import EditSearchForm, SearchForm
 
 
 @require_http_methods(["GET", "POST"])
@@ -105,3 +105,32 @@ def cancel(request: HttpRequest, token: str) -> HttpResponse:
         services.cancel(search.pk, timezone.now())
         return redirect("search-manage", token=token)
     return render(request, "subscriptions/cancel.html", {"search": search})
+
+
+@require_http_methods(["GET", "POST"])
+@never_cache
+@sensitive_post_parameters()
+def edit(request: HttpRequest, token: str) -> HttpResponse:
+    """Present immutable-owner criteria and save only a protected explicit submission."""
+    search = tokens.resolve(token, "management")
+    if search is None:
+        return render(
+            request,
+            "subscriptions/message.html",
+            {"message": "This link is unavailable."},
+            status=410,
+        )
+    initial = {
+        field: getattr(search, field)
+        for field in ("name", "description", "postcode", "state", "edit_version")
+    }
+    initial["interstate"] = "yes" if search.interstate else "no"
+    form = EditSearchForm(request.POST if request.method == "POST" else None, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        error = services.edit(
+            search.pk, search.management_version, form.cleaned_data, timezone.now()
+        )
+        if not error:
+            return redirect("search-manage", token=token)
+        form.add_error(None, error)
+    return render(request, "subscriptions/edit.html", {"form": form, "token": token})

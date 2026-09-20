@@ -1,7 +1,7 @@
 # Dog Finder
 
 Daily adoption alerts for Australian rescue dogs. The SaaS is being built: the current
-application provides a local search creation/confirmation/cancellation preview, health
+application provides a local search creation/confirmation/editing/cancellation preview, health
 probes, and a tested development scaffold. Public registration is closed; matching and
 live email delivery are not implemented yet.
 
@@ -78,6 +78,15 @@ consumed only on successful activation. Activation starts a 90-day term and leav
 baselining pending. An unguessable management link shows one search and supports explicit
 cancellation. GET requests do not activate or cancel; cancellation removes stored criteria.
 
+The private edit page updates active, unexpired, unsuppressed searches using the same
+validation as creation, without changing the email address or expiry. A matching-criteria
+change increments the criteria revision and marks the baseline pending; a rename preserves
+both. Stale forms are rejected instead of overwriting another tab's changes. Reload the
+form to reconcile them. Credentials and lifecycle state are rechecked under the same
+transaction lock used by cancellation, so an edit cannot restore cancelled criteria.
+There are no candidate queues or sent-listing records yet; integrating their edit/reset
+and preservation rules remains part of the matching milestone.
+
 Transactions enforce five active searches per address and 250 distinct active subscribers.
 Additional searches for existing subscribers do not need another subscriber slot. Expired
 searches do not occupy a slot. UTC-day counters permit three confirmation emails per
@@ -96,7 +105,7 @@ It deletes abandoned seven-day confirmations, cancelled searches, and expired se
 beyond the 30-day grace period, without touching other searches at the same address.
 Same-day email counters and suppressed addresses are retained. A production scheduler
 and minimal durable suppression records are part of subsequent work; no timer is installed
-by this feature. Editing, recovery, renewal/reminders, all-search management, native one-click
+by this feature. Recovery, renewal/reminders, all-search management, native one-click
 unsubscribe, and durable provider delivery also remain outstanding before launch.
 
 Private pages send `no-store` and `no-referrer`. Django logs redact private `/s/` requests.

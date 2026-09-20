@@ -1,0 +1,10 @@
+<p id="remaining" aria-live="polite"></p>
+<script>
+  const description = document.getElementById('id_description');
+  const remaining = document.getElementById('remaining');
+  function updateRemaining() {
+    remaining.textContent = `${300 - Array.from(description.value.trim()).length} characters remaining`;
+  }
+  description.addEventListener('input', updateRemaining);
+  updateRemaining();
+</script>

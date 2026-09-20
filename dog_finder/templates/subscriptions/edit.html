@@ -1,0 +1,13 @@
+{% extends "subscriptions/base.html" %}
+{% block content %}
+<h1>Edit search</h1>
+<p>Your email address cannot be changed. Create a new search to use another address.</p>
+<p>Changing matching criteria starts a fresh baseline, without a catch-up catalogue. Renaming does not reset it.</p>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Save changes</button>
+</form>
+{% include "subscriptions/description_count.html" %}
+<p><a href="{% url 'search-edit' token %}">Reload current criteria</a> · <a href="{% url 'search-manage' token %}">Back to search</a></p>
+{% endblock %}

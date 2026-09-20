@@ -11,6 +11,7 @@ urlpatterns = [
     path("s/confirm/<str:token>/", subscriptions.confirm, name="search-confirm"),
     path("s/manage/<str:token>/", subscriptions.manage, name="search-manage"),
     path("s/cancel/<str:token>/", subscriptions.cancel, name="search-cancel"),
+    path("s/edit/<str:token>/", subscriptions.edit, name="search-edit"),
     path("", views.home, name="home"),
     path("health/", views.health, name="health"),
     path("ready/", views.ready, name="ready"),

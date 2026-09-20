@@ -21,12 +21,16 @@ before implementation. README owns verified setup and current behaviour.
   scoped management/cancellation, quota concurrency checks, postcode import, and housekeeping.
   Production registration stays disabled. See README for the implemented preview boundary.
 
+- S3b editing slice completed: shared validation, immutable owner address, stale-form
+  protection, matching revisions, and baseline-preserving renames. PostgreSQL concurrency
+  tests cover competing edits and cancellation. Matching queue integration remains in S5.
+
 ## Next tasks
 
 - S2: Validate permitted PetRescue access and benchmark representative DeepSeek matching
   quality/cost within an explicitly allocated evaluation budget. No live source access or
   paid requests are part of scaffolding.
-- S3b: Extend S3a with editing, link recovery/rotation, address-wide management, renewal,
+- S3b: Extend S3a with link recovery/rotation, address-wide management, renewal,
   reminders, native one-click unsubscribe, and complete retention/suppression semantics.
 - S4: Add Procrastinate and the durable email-intent/SES event flow; exercise ambiguous
   acceptance, suppression, and cancellation races before enabling delivery.
