@@ -10,10 +10,15 @@
   <p>{{ search.description }}</p>
   <p>{{ search.postcode }} {{ search.state }} · Interstate adoption: {{ search.interstate|yesno:"Yes,No" }}</p>
   <p>Expires: {{ search.expires_at|date:"j F Y" }}</p>
+  {% if search.status == "active" and search.expires_at <= now %}
+    <p>This search has expired. Match emails are stopped.</p>
+    {% if not renewable %}<p>The renewal period has ended or this search is unavailable.</p>{% endif %}
+  {% endif %}
+  {% if renewable %}<a href="{% url 'search-renew' token %}">Keep searching</a>{% endif %}
   <p>Last email: no match emails sent yet.</p>
   <p>Source baseline pending. Existing listings will not be sent as a catch-up catalogue.</p>
   <p>Daily matching is not running in this preview. Once available, emails arrive only when new dogs match.</p>
   <a href="{% url 'search-cancel' token %}">Cancel search</a>
-  <a href="{% url 'search-edit' token %}">Edit search</a>
+  {% if renewable and search.expires_at > now %}<a href="{% url 'search-edit' token %}">Edit search</a>{% endif %}
 {% endif %}
 {% endblock %}

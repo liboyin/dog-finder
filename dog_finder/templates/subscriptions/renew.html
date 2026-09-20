@@ -1,0 +1,14 @@
+{% extends "subscriptions/base.html" %}
+{% block content %}
+<h1>Keep searching?</h1>
+<p>{{ search.name }}</p>
+{% if message %}<p role="alert">{{ message }}</p>{% endif %}
+{% if renewable %}
+  <p>Keep this search for at least 90 days from today. Repeated clicks do not add extra terms.</p>
+  <p>If it has expired, renewal needs an available slot and starts a fresh baseline. There is no catch-up catalogue for the inactive period.</p>
+  <form method="post">{% csrf_token %}<button type="submit">Keep searching</button></form>
+{% else %}
+  <p>This search is unavailable for renewal. You can <a href="{% url 'search-create' %}">create a new search</a>.</p>
+{% endif %}
+<p><a href="{% url 'search-manage' token %}">Back to search</a></p>
+{% endblock %}

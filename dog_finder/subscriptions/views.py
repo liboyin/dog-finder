@@ -78,6 +78,7 @@ def manage(request: HttpRequest, token: str) -> HttpResponse:
             {"message": "This link is unavailable."},
             status=410,
         )
+    now = timezone.now()
     return render(
         request,
         "subscriptions/manage.html",
@@ -85,6 +86,8 @@ def manage(request: HttpRequest, token: str) -> HttpResponse:
             "search": search,
             "token": token,
             "masked_email": "***@" + search.subscriber.email.rsplit("@", 1)[1],
+            "now": now,
+            "renewable": services.renewable(search, now),
         },
     )
 
@@ -134,3 +137,33 @@ def edit(request: HttpRequest, token: str) -> HttpResponse:
             return redirect("search-manage", token=token)
         form.add_error(None, error)
     return render(request, "subscriptions/edit.html", {"form": form, "token": token})
+
+
+@require_http_methods(["GET", "POST"])
+@never_cache
+def renew(request: HttpRequest, token: str) -> HttpResponse:
+    """Show a renewal confirmation without effects; mutate only on protected POST."""
+    search = tokens.resolve(token, "management")
+    if search is None:
+        return render(
+            request,
+            "subscriptions/message.html",
+            {"message": "This link is unavailable."},
+            status=410,
+        )
+    message = ""
+    now = timezone.now()
+    if request.method == "POST":
+        message = services.renew(search.pk, search.management_version, now)
+        if not message:
+            return redirect("search-manage", token=token)
+    return render(
+        request,
+        "subscriptions/renew.html",
+        {
+            "search": search,
+            "token": token,
+            "message": message,
+            "renewable": services.renewable(search, now),
+        },
+    )

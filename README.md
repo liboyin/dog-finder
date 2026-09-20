@@ -87,6 +87,18 @@ transaction lock used by cancellation, so an edit cannot restore cancelled crite
 There are no candidate queues or sent-listing records yet; integrating their edit/reset
 and preservation rules remains part of the matching milestone.
 
+The management page offers **Keep searching** for active searches and for 30 days after
+expiry. Its confirmation button requires a CSRF-protected POST; GETs never renew. Renewal
+sets expiry to the later of the current expiry and 90 days from the request, so repeated
+clicks do not accumulate extra terms. Renewal before expiry preserves the baseline.
+Grace-period renewal reacquires both search and subscriber capacity, advances the matching
+revision, marks the baseline pending, and invalidates old edit forms. It keeps the same
+search identity and criteria. The exact 30-day deadline is excluded, consistently with
+housekeeping. Cancelled, suppressed, and unconfirmed searches cannot renew. Expiry is
+evaluated at request time, so no timer is needed to release capacity or stop eligibility.
+Reminder emails and integration with future candidate/sent-listing records are not yet
+implemented.
+
 Transactions enforce five active searches per address and 250 distinct active subscribers.
 Additional searches for existing subscribers do not need another subscriber slot. Expired
 searches do not occupy a slot. UTC-day counters permit three confirmation emails per
@@ -105,7 +117,7 @@ It deletes abandoned seven-day confirmations, cancelled searches, and expired se
 beyond the 30-day grace period, without touching other searches at the same address.
 Same-day email counters and suppressed addresses are retained. A production scheduler
 and minimal durable suppression records are part of subsequent work; no timer is installed
-by this feature. Recovery, renewal/reminders, all-search management, native one-click
+by this feature. Recovery, reminders, all-search management, native one-click
 unsubscribe, and durable provider delivery also remain outstanding before launch.
 
 Private pages send `no-store` and `no-referrer`. Django logs redact private `/s/` requests.

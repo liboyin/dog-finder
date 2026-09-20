@@ -25,12 +25,17 @@ before implementation. README owns verified setup and current behaviour.
   protection, matching revisions, and baseline-preserving renames. PostgreSQL concurrency
   tests cover competing edits and cancellation. Matching queue integration remains in S5.
 
+- S3b renewal slice completed: protected manual renewal, non-stacking terms, expiry/grace
+  status, and quota-safe reactivation. Active renewals preserve baselines; grace renewals
+  advance the matching revision. Concurrent renewals, activation, and cancellation are
+  verified against PostgreSQL; reminder delivery and matching integration remain below.
+
 ## Next tasks
 
 - S2: Validate permitted PetRescue access and benchmark representative DeepSeek matching
   quality/cost within an explicitly allocated evaluation budget. No live source access or
   paid requests are part of scaffolding.
-- S3b: Extend S3a with link recovery/rotation, address-wide management, renewal,
+- S3b: Extend S3a with link recovery/rotation, address-wide management,
   reminders, native one-click unsubscribe, and complete retention/suppression semantics.
 - S4: Add Procrastinate and the durable email-intent/SES event flow; exercise ambiguous
   acceptance, suppression, and cancellation races before enabling delivery.

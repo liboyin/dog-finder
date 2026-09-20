@@ -11,7 +11,7 @@ from dog_finder.subscriptions.models import Capacity, RequestSource, Search, Sub
 
 
 class Command(BaseCommand):
-    """Run daily housekeeping; full reminder/renewal workflow follows separately."""
+    """Run daily housekeeping; automated reminder delivery follows separately."""
 
     help = "Delete expired confirmations, cancelled searches, and searches beyond renewal grace."
 

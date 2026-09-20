@@ -20,6 +20,20 @@ def active(now: datetime) -> QuerySet[Search]:
     return Search.objects.filter(status="active", expires_at__gt=now)
 
 
+def admission_error(subscriber_id: int, now: datetime) -> str:
+    """Check both quotas while the caller holds the shared capacity-row lock."""
+    searches = active(now)
+    count = searches.filter(subscriber_id=subscriber_id).count()
+    if count >= settings.ACTIVE_SEARCH_LIMIT:
+        return "You already have five active searches. Cancel one before starting another."
+    if (
+        count == 0
+        and searches.values("subscriber_id").distinct().count() >= settings.ACTIVE_SUBSCRIBER_LIMIT
+    ):
+        return "Dog Finder is at capacity. Please try again later."
+    return ""
+
+
 @transaction.atomic
 def request_search(criteria: dict, request_source: str, now: datetime) -> Search | None:
     """Create a bounded pending search and capture local email in the same transaction.
@@ -89,18 +103,8 @@ def activate(search_id: uuid.UUID, version: uuid.UUID, now: datetime) -> tuple[S
         or search.subscriber.suppressed
     ):
         return search, "This confirmation is no longer available."
-    searches = active(now)
-    count = searches.filter(subscriber=search.subscriber).count()
-    if count >= settings.ACTIVE_SEARCH_LIMIT:
-        return (
-            search,
-            "You already have five active searches. Cancel one before activating another.",
-        )
-    if (
-        count == 0
-        and searches.values("subscriber_id").distinct().count() >= settings.ACTIVE_SUBSCRIBER_LIMIT
-    ):
-        return search, "Dog Finder is at capacity. Please try again later."
+    if error := admission_error(search.subscriber_id, now):
+        return search, error
     search.status = "active"
     search.activated_at = now
     search.expires_at = now + timedelta(days=90)
@@ -157,5 +161,39 @@ def edit(
     for field in ("name", *matching_fields):
         setattr(search, field, criteria[field])
     search.edit_version = uuid.uuid4()
+    search.save()
+    return ""
+
+
+def renewable(search: Search | None, now: datetime) -> bool:
+    """Return eligibility before quota checks; the exact grace deadline is exclusive."""
+    return (
+        search is not None
+        and search.status == "active"
+        and search.expires_at is not None
+        and search.expires_at + timedelta(days=30) > now
+        and not search.subscriber.suppressed
+    )
+
+
+@transaction.atomic
+def renew(search_id: uuid.UUID, management_version: uuid.UUID, now: datetime) -> str:
+    """Extend a term without stacking clicks, reacquiring capacity after expiry.
+
+    Active renewal preserves the matching baseline. Grace-period renewal advances
+    the matching revision and marks its baseline pending for the future pipeline.
+    The shared lock serializes renewal with activation, editing, purge, and cancel.
+    """
+    Capacity.objects.select_for_update().get(pk=1)
+    search = Search.objects.select_related("subscriber").filter(pk=search_id).first()
+    if not renewable(search, now) or search.management_version != management_version:
+        return "This search cannot be renewed. Create a new search if its renewal period has ended."
+    if search.expires_at <= now:
+        if error := admission_error(search.subscriber_id, now):
+            return error
+        search.criteria_revision += 1
+        search.baseline_pending = True
+        search.edit_version = uuid.uuid4()
+    search.expires_at = max(search.expires_at, now + timedelta(days=90))
     search.save()
     return ""

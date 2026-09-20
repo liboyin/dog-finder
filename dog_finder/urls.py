@@ -12,6 +12,7 @@ urlpatterns = [
     path("s/manage/<str:token>/", subscriptions.manage, name="search-manage"),
     path("s/cancel/<str:token>/", subscriptions.cancel, name="search-cancel"),
     path("s/edit/<str:token>/", subscriptions.edit, name="search-edit"),
+    path("s/renew/<str:token>/", subscriptions.renew, name="search-renew"),
     path("", views.home, name="home"),
     path("health/", views.health, name="health"),
     path("ready/", views.ready, name="ready"),
