@@ -1,0 +1,51 @@
+[project]
+name = "dog-finder"
+version = "0.1.0"
+description = "Australian rescue dog adoption alerts"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "django>=5.2,<5.3",
+  "gunicorn>=23,<24",
+  "psycopg[binary]>=3.2,<4",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8,<10",
+  "pytest-cov>=6,<8",
+  "pytest-django>=4.11,<5",
+  "pytest-socket>=0.7,<1",
+  "ruff>=0.11,<1",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "dog_finder.settings.test"
+testpaths = ["tests", "service_tests"]
+pythonpath = ["."]
+addopts = "--strict-markers --strict-config --disable-socket --allow-unix-socket"
+markers = ["database: requires a disposable PostgreSQL test database"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+# Legacy pipeline files retain their existing style until migrated.
+extend-exclude = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# Django's settings modules intentionally extend the shared settings namespace.
+"dog_finder/settings/*.py" = ["F403", "F405"]
+
+[tool.coverage.run]
+branch = true
+source = ["dog_finder"]
+omit = ["dog_finder/wsgi.py", "dog_finder/settings/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 100

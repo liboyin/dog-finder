@@ -112,7 +112,7 @@ These stories are for the operator, not subscribers.
 
 ## Retiring the Personal Pipeline
 
-- The single-user Sydney pipeline (systemd timer, `data/state.json`, `data/dog-index.md`, and the Codex judge running on a personal subscription) should be retired once the service replaces it. Reusable, tested parts (the PetRescue parser, deduplication, and the fail-loud source manifest) move into the service.
+- The owner authorized immediate retirement of the single-user Sydney automation on 20 September 2026, superseding retirement after replacement. Its timer and runner are retired; historical `data/state.json` and `data/dog-index.md` are retained without migration. Reuse tested extraction components where appropriate, and implement source-run failure reporting in the service.
 - Git history remains the record of the personal index. No personal-pipeline data is migrated into the service.
 
 ## Not Planned

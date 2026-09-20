@@ -5,3 +5,11 @@ logs/
 __pycache__/
 *.pyc
 .DS_Store
+.env
+.env.*
+!.env.example
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+staticfiles/

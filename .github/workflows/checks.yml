@@ -1,0 +1,41 @@
+name: Checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: dog_finder_test_control
+          POSTGRES_USER: dog_finder_test
+          POSTGRES_PASSWORD: local-test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dog_finder_test -d dog_finder_test_control"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_PORT: "5432"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.17"
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest --allow-hosts=127.0.0.1 --cov --cov-report=term-missing
+      - run: uv run python manage.py check --settings=dog_finder.settings.test
+      - run: uv run python manage.py makemigrations --check --dry-run --settings=dog_finder.settings.test
+      - name: Check production configuration with synthetic credentials
+        env:
+          DJANGO_SECRET_KEY: scaffold-check-only-abcdefghijklmnopqrstuvwxyz-0123456789
+          ALLOWED_HOSTS: example.test
+          DATABASE_NAME: scaffold
+          DATABASE_USER: scaffold
+          DATABASE_PASSWORD: scaffold
+          DATABASE_HOST: localhost
+        run: uv run python manage.py check --deploy --settings=dog_finder.settings.production

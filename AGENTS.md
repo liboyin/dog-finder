@@ -17,7 +17,7 @@ Link to the owning document instead of duplicating its procedures. Distinguish i
 - Accepted decisions and authorization persist. Do not ask again about settled choices. Clarify unresolved choices that materially affect scope, architecture, correctness, privacy, cost, or user-visible behaviour before dependent work; continue independent work where possible.
 - Routine implementation choices MAY be resolved using repository evidence and judgment. Report material assumptions and limitations in the handoff.
 - The initial service has a 250-active-subscriber cap, five searches per address, a US$50 monthly target, and a US$100 ceiling before tax. DESIGN.md owns the detailed accounting and admission rules. Do not raise limits, drop eligible work, or weaken matching to make a cost estimate fit.
-- Work on the SaaS does not itself authorize retiring or modifying the running personal pipeline, its timer, or its data. Keep migration and retirement within their explicitly authorized scope.
+- The owner authorized retirement of the personal automation on 20 September 2026. Its timer is disabled and runner removed. Preserve historical data and unrelated local changes; retirement does not authorize migrating personal data into the SaaS.
 - A local Python environment is supported; Docker is optional. Do not require a container solely to work on this repository.
 
 # Design and Python Standards

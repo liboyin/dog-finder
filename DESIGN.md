@@ -193,7 +193,7 @@ Verification before public launch:
 3. Add shared ingestion, versioned baselines, DeepSeek assessment jobs, and daily digests.
 4. Add suppression events, spend controls, retention, backups, and operational checks; validate before opening public registration.
 
-Do not add a structured preference engine, embeddings, self-hosted model, or distributed infrastructure initially. If measurements require a change, optimize the measured dominant cost first. Preserve the personal pipeline until the replacement is validated; this design does not authorize retiring it yet.
+Do not add a structured preference engine, embeddings, self-hosted model, or distributed infrastructure initially. If measurements require a change, optimize the measured dominant cost first. The owner subsequently authorized immediate retirement of the personal automation on 20 September 2026; its timer is disabled and runner removed, while historical data remains untouched. This supersedes the earlier plan to wait until the replacement was validated.
 
 ## Later shelter expansion
 
