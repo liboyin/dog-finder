@@ -13,6 +13,7 @@ urlpatterns = [
     path("s/cancel/<str:token>/", subscriptions.cancel, name="search-cancel"),
     path("s/edit/<str:token>/", subscriptions.edit, name="search-edit"),
     path("s/renew/<str:token>/", subscriptions.renew, name="search-renew"),
+    path("s/unsubscribe/<str:token>/", subscriptions.unsubscribe, name="search-unsubscribe"),
     path("", views.home, name="home"),
     path("health/", views.health, name="health"),
     path("ready/", views.ready, name="ready"),

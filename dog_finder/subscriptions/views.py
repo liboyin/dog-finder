@@ -5,11 +5,32 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.debug import sensitive_post_parameters
-from django.views.decorators.http import require_http_methods, require_safe
+from django.views.decorators.http import require_http_methods, require_POST, require_safe
 
 from . import services, tokens
 from .forms import EditSearchForm, SearchForm
+
+
+@csrf_exempt
+@never_cache
+@require_POST
+def unsubscribe(request: HttpRequest, token: str) -> HttpResponse:
+    """Accept the RFC 8058 form POST without cookies, redirects, or management access.
+
+    This is the only CSRF-exempt mutation: its separate signed credential grants
+    cancellation only. Generic empty acknowledgements also cover already removed
+    or invalid credentials, preventing provider retries after housekeeping.
+    """
+    if (
+        request.content_type not in ("application/x-www-form-urlencoded", "multipart/form-data")
+        or dict(request.POST.lists()) != {"List-Unsubscribe": ["One-Click"]}
+        or request.FILES
+    ):
+        return HttpResponse(status=400)
+    services.unsubscribe(token, timezone.now())
+    return HttpResponse(status=204)
 
 
 @require_http_methods(["GET", "POST"])

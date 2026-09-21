@@ -7,7 +7,7 @@ from .models import Search
 
 
 def issue(search: Search, purpose: str) -> str:
-    """Create a confirmation or management credential without including personal data."""
+    """Create a purpose-scoped search credential without including personal data."""
     version = getattr(search, f"{purpose}_version")
     return signing.dumps({"id": str(search.pk), "version": str(version)}, salt=f"search.{purpose}")
 

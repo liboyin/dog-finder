@@ -117,8 +117,21 @@ It deletes abandoned seven-day confirmations, cancelled searches, and expired se
 beyond the 30-day grace period, without touching other searches at the same address.
 Same-day email counters and suppressed addresses are retained. A production scheduler
 and minimal durable suppression records are part of subsequent work; no timer is installed
-by this feature. Recovery, reminders, all-search management, native one-click
-unsubscribe, and durable provider delivery also remain outstanding before launch.
+by this feature. Recovery, reminders, all-search management, and durable provider delivery
+also remain outstanding before launch.
+
+The native unsubscribe receiver at `/s/unsubscribe/<token>/` accepts the
+[RFC 8058](https://www.rfc-editor.org/rfc/rfc8058) form POST
+`List-Unsubscribe=One-Click` (URL-encoded or multipart). Its separately signed,
+revocable credential can only cancel one search; it cannot reveal criteria or grant
+management access. This endpoint alone is CSRF-exempt and does not depend on cookies.
+GET/HEAD and other methods return 405 without changes; malformed payloads return 400.
+Valid-shaped POSTs return an empty 204 without redirects, including invalid, revoked,
+already-cancelled, and deleted links. Retries preserve the original cancellation time.
+Cancellation uses the shared lifecycle lock, removes criteria, and does not cancel sibling
+searches or suppress the whole address. HTTPS, outgoing List-Unsubscribe headers, DKIM
+coverage of both unsubscribe headers, and queued-send rechecks remain requirements for
+the future SES integration. No real email client integration is enabled by this receiver.
 
 Private pages send `no-store` and `no-referrer`. Django logs redact private `/s/` requests.
 Any future reverse proxy or access/error logging service must likewise omit or redact

@@ -130,6 +130,20 @@ def cancel(search_id: uuid.UUID, now: datetime) -> Search | None:
 
 
 @transaction.atomic
+def unsubscribe(token: str, now: datetime) -> None:
+    """Cancel only the credential's search, with retries and stale links as no-ops.
+
+    Resolve under the lifecycle lock so revocation and deletion cannot race the
+    mutation. Reuse cancellation's criteria erasure; the nested lock is reentrant
+    within this transaction. No subscriber-wide suppression is implied.
+    """
+    Capacity.objects.select_for_update().get(pk=1)
+    search = tokens.resolve(token, "unsubscribe")
+    if search is not None and search.status != "cancelled":
+        cancel(search.pk, now)
+
+
+@transaction.atomic
 def edit(
     search_id: uuid.UUID,
     management_version: uuid.UUID,

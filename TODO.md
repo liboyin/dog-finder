@@ -30,13 +30,18 @@ before implementation. README owns verified setup and current behaviour.
   advance the matching revision. Concurrent renewals, activation, and cancellation are
   verified against PostgreSQL; reminder delivery and matching integration remain below.
 
+- S3b native unsubscribe receiver completed: separate cancellation-only credentials,
+  RFC 8058 form POST validation, scanner-safe method restrictions, idempotent replies,
+  and shared cancellation locking. Migration rollback and credential/race tests verified;
+  outgoing headers, HTTPS/DKIM deployment, and queued-send integration remain in S4.
+
 ## Next tasks
 
 - S2: Validate permitted PetRescue access and benchmark representative DeepSeek matching
   quality/cost within an explicitly allocated evaluation budget. No live source access or
   paid requests are part of scaffolding.
 - S3b: Extend S3a with link recovery/rotation, address-wide management,
-  reminders, native one-click unsubscribe, and complete retention/suppression semantics.
+  reminders, and complete retention/suppression semantics.
 - S4: Add Procrastinate and the durable email-intent/SES event flow; exercise ambiguous
   acceptance, suppression, and cancellation races before enabling delivery.
 - S5: Adapt shared ingestion, source publication, baselines, candidates, and direct AI
