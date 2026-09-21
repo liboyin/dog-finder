@@ -11,6 +11,7 @@
       <p>Daily adoption alerts for Australian rescue dogs.</p>
       <p>We're getting ready. Search registration is not open yet.</p>
       {% if preview %}<p><a href="{% url 'search-create' %}">Preview search creation</a> (local development).</p>{% endif %}
+      {% if preview %}<p><a href="{% url 'recovery-request' %}">Find my alerts</a> (local email capture).</p>{% endif %}
     </main>
   </body>
 </html>

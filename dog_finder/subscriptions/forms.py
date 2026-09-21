@@ -57,3 +57,9 @@ class EditSearchForm(SearchForm):
 
     email = None
     edit_version = forms.UUIDField(widget=forms.HiddenInput)
+
+
+class RecoveryForm(forms.Form):
+    """Validate a recovery address without disclosing whether it has searches."""
+
+    email = forms.EmailField(max_length=254)

@@ -1,0 +1,6 @@
+{% extends "subscriptions/base.html" %}
+{% block content %}
+<h1>Find my alerts</h1>
+<p>Enter the email address used for your searches. This local preview captures email in memory; it does not deliver to your inbox.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Send recovery link</button></form>
+{% endblock %}

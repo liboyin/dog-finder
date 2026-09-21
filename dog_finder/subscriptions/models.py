@@ -31,6 +31,8 @@ class Subscriber(models.Model):
     verified_at = models.DateTimeField(null=True)
     email_day = models.DateField(null=True)
     email_count = models.PositiveIntegerField(default=0)
+    recovery_version = models.UUIDField(default=uuid.uuid4)
+    address_version = models.UUIDField(default=uuid.uuid4)
 
 
 class RequestSource(models.Model):

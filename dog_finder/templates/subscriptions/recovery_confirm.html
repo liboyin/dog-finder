@@ -1,0 +1,6 @@
+{% extends "subscriptions/base.html" %}
+{% block content %}
+<h1>Open your alerts</h1>
+<p>This button consumes the recovery link and opens your searches. It does not change their criteria or expiry dates.</p>
+<form method="post">{% csrf_token %}<button type="submit">Open my alerts</button></form>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "subscriptions/base.html" %}
+{% block content %}
+<h1>Your searches</h1>
+<p>{{ masked_email }}</p>
+{% for entry in entries %}
+<section>
+  <h2>{{ entry.search.name }}</h2>
+  <p>{{ entry.search.description }}</p>
+  <p>{% if entry.expired %}Expired — renewal available{% else %}Active{% endif %}. Expiry: {{ entry.search.expires_at|date:"j F Y" }}</p>
+  <a href="{% url 'search-manage' entry.token %}">View search</a>
+  {% if not entry.expired %}<a href="{% url 'search-edit' entry.token %}">Edit search</a>{% endif %}
+  <a href="{% url 'search-renew' entry.token %}">Keep searching</a>
+  <a href="{% url 'search-cancel' entry.token %}">Cancel search</a>
+</section>
+{% empty %}<p>No active searches or searches within the renewal grace period.</p>{% endfor %}
+<p>Keep this address-wide link private. It can access every active search at this address.</p>
+{% endblock %}

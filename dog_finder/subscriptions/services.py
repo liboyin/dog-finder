@@ -44,15 +44,9 @@ def request_search(criteria: dict, request_source: str, now: datetime) -> Search
     if settings.EMAIL_BACKEND != "django.core.mail.backends.locmem.EmailBackend":
         raise ImproperlyConfigured("Search creation currently requires local email capture")
     Capacity.objects.select_for_update().get(pk=1)
-    today = now.date()
-    key = salted_hmac("confirmation-source", request_source).hexdigest()
-    source, _ = RequestSource.objects.get_or_create(key=key, defaults={"day": today})
-    if source.day != today:
-        source.day, source.count = today, 0
-    if source.count >= settings.REQUEST_SOURCE_DAILY_LIMIT:
+    if not reserve_request_source(request_source, now):
         return None
-    source.count += 1
-    source.save()
+    today = now.date()
     if Search.objects.filter(status="pending").count() >= settings.PENDING_SEARCH_LIMIT:
         return None
     email = criteria["email"].strip()
@@ -88,6 +82,20 @@ def request_search(criteria: dict, request_source: str, now: datetime) -> Search
         [subscriber.email],
     )
     return search
+
+
+def reserve_request_source(request_source: str, now: datetime) -> bool:
+    """Reserve a shared creation/recovery source request while holding the capacity lock."""
+    today = now.date()
+    key = salted_hmac("confirmation-source", request_source).hexdigest()
+    source, _ = RequestSource.objects.get_or_create(key=key, defaults={"day": today})
+    if source.day != today:
+        source.day, source.count = today, 0
+    if source.count >= settings.REQUEST_SOURCE_DAILY_LIMIT:
+        return False
+    source.count += 1
+    source.save()
+    return True
 
 
 @transaction.atomic

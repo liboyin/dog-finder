@@ -99,6 +99,23 @@ evaluated at request time, so no timer is needed to release capacity or stop eli
 Reminder emails and integration with future candidate/sent-listing records are not yet
 implemented.
 
+**Find my alerts** at `/search/recover/` captures a recovery email locally for addresses
+with active searches or expired searches still inside the 30-day grace period. Public
+receipts are identical for unknown, suppressed, and limited addresses. Recovery shares
+the three-emails-per-UTC-day address counter and source-request counter with confirmation;
+it does not create subscribers or consume additional capacity. Its request form is disabled
+alongside registration in production, and its service rejects live email backends.
+
+Recovery links use a seven-day window and require a CSRF-protected button press before
+being consumed. A successful use invalidates all outstanding recovery links for that
+address without changing searches or existing management links. It opens a separately
+scoped, masked-email dashboard listing active searches and grace-period renewal options,
+with links to existing edit, cancel, and renewal pages. Pending, cancelled, fully expired,
+and other addresses' searches are excluded. The recovery email also lists grace-period
+searches with their individual renewal links. A single-search or unsubscribe credential
+cannot open the address-wide dashboard. Replacing exposed management credentials remains
+unimplemented; this recovery preview restores access, not revocation.
+
 Transactions enforce five active searches per address and 250 distinct active subscribers.
 Additional searches for existing subscribers do not need another subscriber slot. Expired
 searches do not occupy a slot. UTC-day counters permit three confirmation emails per
@@ -117,7 +134,7 @@ It deletes abandoned seven-day confirmations, cancelled searches, and expired se
 beyond the 30-day grace period, without touching other searches at the same address.
 Same-day email counters and suppressed addresses are retained. A production scheduler
 and minimal durable suppression records are part of subsequent work; no timer is installed
-by this feature. Recovery, reminders, all-search management, and durable provider delivery
+by this feature. Management-link replacement, reminders, and durable provider delivery
 also remain outstanding before launch.
 
 The native unsubscribe receiver at `/s/unsubscribe/<token>/` accepts the

@@ -35,12 +35,17 @@ before implementation. README owns verified setup and current behaviour.
   and shared cancellation locking. Migration rollback and credential/race tests verified;
   outgoing headers, HTTPS/DKIM deployment, and queued-send integration remain in S4.
 
+- S3b recovery/dashboard slice completed: local recovery email, seven-day single-use
+  confirmation, shared creation/recovery limits, and isolated address-wide access to
+  active/grace searches. PostgreSQL concurrency, scope, rendered pages, and migration
+  rollback verified. Exposed-link replacement and live delivery remain outstanding.
+
 ## Next tasks
 
 - S2: Validate permitted PetRescue access and benchmark representative DeepSeek matching
   quality/cost within an explicitly allocated evaluation budget. No live source access or
   paid requests are part of scaffolding.
-- S3b: Extend S3a with link recovery/rotation, address-wide management,
+- S3b: Extend S3a with exposed-link replacement/rotation,
   reminders, and complete retention/suppression semantics.
 - S4: Add Procrastinate and the durable email-intent/SES event flow; exercise ambiguous
   acceptance, suppression, and cancellation races before enabling delivery.

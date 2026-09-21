@@ -3,9 +3,14 @@
 from django.urls import path
 
 from dog_finder import views
+from dog_finder.subscriptions import recovery_views
 from dog_finder.subscriptions import views as subscriptions
 
 urlpatterns = [
+    path("search/recover/", recovery_views.request_recovery, name="recovery-request"),
+    path("search/recovery-requested/", recovery_views.requested, name="recovery-requested"),
+    path("s/recover/<str:token>/", recovery_views.confirm, name="recovery-confirm"),
+    path("s/address/<str:token>/", recovery_views.manage, name="address-manage"),
     path("search/new/", subscriptions.create, name="search-create"),
     path("search/requested/", subscriptions.requested, name="search-requested"),
     path("s/confirm/<str:token>/", subscriptions.confirm, name="search-confirm"),
