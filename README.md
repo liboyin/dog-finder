@@ -44,7 +44,8 @@ availability, not the health of the future daily processing pipeline.
 
 Local email uses Django's in-memory backend. No source fetches, AI calls, email sends,
 or background jobs start automatically. Procrastinate is available for explicitly
-queued local reminder previews; provider adapters are not yet implemented.
+queued local reminder previews. An offline-tested SES transport exists, but no
+application workflow calls it and live delivery remains disabled.
 
 ## Subscriber preview
 
@@ -219,6 +220,38 @@ The same local-capture boundary above applies: a succeeded job is not email deli
 messages disappear with the worker process, and a lifecycle no-op also succeeds. This
 does not implement crash recovery for abandoned in-progress jobs, provider acceptance,
 recurring scheduling, or production worker supervision. Those remain launch prerequisites.
+
+### SES transport boundary (not enabled)
+
+`dog_finder.delivery.ses.SesSender` is an internal, offline-tested SES v2 adapter,
+not a Django email backend or a worker task. It preserves rendered multipart MIME
+and supplied unsubscribe headers, accepts one recipient, requires an explicit region
+and event configuration set, and tags requests with only an internal intent UUID.
+It rejects messages above the application's 1 MiB limit without truncating content.
+Client connection/read timeouts are 5/30 seconds; the caller owns and closes the client.
+
+The adapter forces one total SDK attempt, overriding ambient retry settings, and
+disables per-message open/click tracking. AWS endpoint environment overrides are ignored.
+It returns `accepted` only for a valid successful provider response, `rejected` for
+documented explicit send rejections, and `acceptance_unknown` for transport/parser
+failures or unexpected responses. No outcome triggers a retry inside the adapter.
+Accepted means provider acceptance, not inbox delivery. Provider error text is not
+returned or logged; SDK debug logging is disabled in application settings because it
+can expose MIME bodies and private links. Do not enable SDK debug or local-variable
+capture in production error reporting.
+
+The request contract was checked against the locked SDK and official
+[SES SendEmail](https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_SendEmail.html),
+[SDK retry](https://docs.aws.amazon.com/boto3/latest/guide/retries.html), and
+[tracking override](https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_TrackingConfigurationOverrides.html)
+documentation on 2026-09-21. No real AWS calls, credentials, domain configuration, or
+provider acceptance were tested. Before wiring it into any workflow, implement durable
+intent/attempt records, lifecycle and spending checks, authenticated/deduplicated SNS
+events, and ambiguity reconciliation. Provision and validate the SES configuration set
+and event destination separately. Never replace a retryable local-preview task with a
+direct call to this adapter: an unknown outcome must remain blocked for reconciliation,
+including after a worker crash. Outgoing unsubscribe-header generation and DKIM
+verification also remain outstanding; this adapter only preserves supplied headers.
 
 ### Native unsubscribe receiver
 

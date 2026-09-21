@@ -60,6 +60,12 @@ before implementation. README owns verified setup and current behaviour.
   execution locks, and two bounded retries. Real PostgreSQL workers, lifecycle rechecks,
   concurrent deferral, rollback and replay verified; no live delivery or scheduler enabled.
 
+- S4 SES transport boundary completed: unwired single-attempt SES v2 adapter with
+  ID-only correlation tags, explicit event routing, tracking disabled, bounded MIME
+  requests/timeouts, and conservative acceptance classification. Offline SDK/HTTP
+  tests cover rejection, ambiguity, privacy-safe results and disabled retries.
+  Application workflows still capture email locally; durable orchestration remains below.
+
 ## Next tasks
 
 - S2: Validate permitted PetRescue access and benchmark representative DeepSeek matching

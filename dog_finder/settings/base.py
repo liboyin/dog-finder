@@ -55,6 +55,9 @@ LOGGING = {
     "filters": {"private": {"()": "dog_finder.subscriptions.privacy.PrivateRequests"}},
     "handlers": {"console": {"class": "logging.StreamHandler", "filters": ["private"]}},
     "loggers": {
+        # SDK debug output can include raw email bodies and private links.
+        "botocore": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        "boto3": {"handlers": ["console"], "level": "WARNING", "propagate": False},
         "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "django.server": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
