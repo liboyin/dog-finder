@@ -1,0 +1,17 @@
+{% autoescape off %}Dog Finder
+
+Your search "{{ search.name }}" expires on {{ search.expires_at|date:"j F Y, H:i T" }}.
+You are receiving this reminder because you activated this search.
+
+Keep searching:
+{{ renew }}
+Open the link and press the button to keep searching for at least 90 days from renewal.
+Without renewal, match emails stop at expiry. Renewal remains available for 30 days after expiry, subject to capacity.
+
+Manage this search:
+{{ manage }}
+
+Already found your dog? Cancel this search:
+{{ cancel }}
+Cancellation requires a confirming button press. Keep these private links to yourself.
+{% endautoescape %}

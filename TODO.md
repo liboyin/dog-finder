@@ -45,12 +45,17 @@ before implementation. README owns verified setup and current behaviour.
   native unsubscribe credentials. Stale browser cancellation is checked under the same
   lock; replay, competing replacements, and unchanged default recovery are verified.
 
+- S3b reminder preview completed: unique search/expiry records, seven-day planning,
+  current-link HTML/text rendering, and local-only capture with lifecycle rechecks.
+  Deduplication, failure rollback, concurrency, and migration rollback verified.
+  Scheduling and provider send/acceptance semantics remain in S4/S6.
+
 ## Next tasks
 
 - S2: Validate permitted PetRescue access and benchmark representative DeepSeek matching
   quality/cost within an explicitly allocated evaluation budget. No live source access or
   paid requests are part of scaffolding.
-- S3b: Extend S3a with reminders and complete retention/suppression semantics.
+- S3b: Complete retention/suppression semantics.
 - S4: Add Procrastinate and the durable email-intent/SES event flow; exercise ambiguous
   acceptance, suppression, and cancellation races before enabling delivery.
 - S5: Adapt shared ingestion, source publication, baselines, candidates, and direct AI

@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Your search expires soon</title></head>
+<body style="font-family:system-ui,sans-serif;line-height:1.6;max-width:40rem;margin:auto;padding:1rem">
+<h1>Keep searching?</h1>
+<p>Your Dog Finder search <strong>{{ search.name }}</strong> expires on {{ search.expires_at|date:"j F Y, H:i T" }}.</p>
+<p>You are receiving this reminder because you activated this search.</p>
+<p><a href="{{ renew }}">Keep searching</a> — open the link and press the button to keep searching for at least 90 days from renewal.</p>
+<p>Without renewal, match emails stop at expiry. Renewal remains available for 30 days after expiry, subject to capacity.</p>
+<p><a href="{{ manage }}">Manage this search</a> · <a href="{{ cancel }}">Cancel this search</a></p>
+<p>Cancellation requires a confirming button press. Keep these private links to yourself.</p>
+</body></html>

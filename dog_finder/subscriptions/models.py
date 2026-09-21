@@ -75,3 +75,25 @@ class Search(models.Model):
                 name="valid_search_status",
             )
         ]
+
+
+class ExpiryReminder(models.Model):
+    """One durable reminder per expiry; preview capture is never provider acceptance."""
+
+    search = models.ForeignKey(Search, on_delete=models.CASCADE, related_name="reminders")
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField()
+    status = models.CharField(max_length=10, default="pending")
+    previewed_at = models.DateTimeField(null=True)
+
+    class Meta:
+        """Deduplicate logical reminders and index outstanding preview work."""
+
+        constraints = [
+            models.UniqueConstraint(fields=["search", "expires_at"], name="reminder_search_expiry"),
+            models.CheckConstraint(
+                condition=models.Q(status__in=["pending", "previewed", "obsolete"]),
+                name="valid_reminder_status",
+            ),
+        ]
+        indexes = [models.Index(fields=["status", "id"])]

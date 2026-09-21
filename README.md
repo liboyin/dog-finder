@@ -96,8 +96,8 @@ revision, marks the baseline pending, and invalidates old edit forms. It keeps t
 search identity and criteria. The exact 30-day deadline is excluded, consistently with
 housekeeping. Cancelled, suppressed, and unconfirmed searches cannot renew. Expiry is
 evaluated at request time, so no timer is needed to release capacity or stop eligibility.
-Reminder emails and integration with future candidate/sent-listing records are not yet
-implemented.
+Reminder delivery and integration with future candidate/sent-listing records are not yet
+implemented; local reminder previews are described below.
 
 **Find my alerts** at `/search/recover/` captures a recovery email locally for addresses
 with active searches or expired searches still inside the 30-day grace period. Public
@@ -142,8 +142,35 @@ It deletes abandoned seven-day confirmations, cancelled searches, and expired se
 beyond the 30-day grace period, without touching other searches at the same address.
 Same-day email counters and suppressed addresses are retained. A production scheduler
 and minimal durable suppression records are part of subsequent work; no timer is installed
-by this feature. Reminders and durable provider delivery
+by this feature. Reminder scheduling and durable provider delivery
 also remain outstanding before launch.
+
+### Local expiry reminder preview
+
+After migrations, this development-only workflow plans and captures reminder previews:
+
+```sh
+uv run python manage.py preview_expiry_reminders
+```
+
+Each search/expiry pair has one durable reminder record. Planning starts seven days before
+expiry (inclusive); a late run catches up only while the search remains unexpired. Pending,
+cancelled, and suppressed searches are excluded. A renewed term gets a new reminder when
+its own window starts. Preview capture rechecks lifecycle and expiry under the shared lock;
+outdated reminders become `obsolete`. Concurrent runs cannot capture the same record twice.
+HTML and plain-text emails identify the search and expiry and include current renewal,
+management, and cancel links. No rendered credentials or email bodies are stored in the
+reminder table; deleting a search also deletes its reminder records.
+
+The command prints counts only. Email stays in process memory and disappears when the
+command exits; `previewed` records mean local capture, **not** provider acceptance or inbox
+delivery. Previewing changes reminder state and is not a dry run. Use only a development
+database; tests own a disposable database. This capture path rejects live backends and is
+not crash-safe external delivery. S4 must add the durable send-intent/acceptance workflow
+before any real reminder sends; do not simply switch its email backend. No scheduler or
+timer is installed by this feature.
+
+### Native unsubscribe receiver
 
 The native unsubscribe receiver at `/s/unsubscribe/<token>/` accepts the
 [RFC 8058](https://www.rfc-editor.org/rfc/rfc8058) form POST
