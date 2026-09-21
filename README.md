@@ -132,6 +132,23 @@ hash. At most 750 pending searches are retained. Proxies must supply a trustwort
 address before public launch; the preview uses `REMOTE_ADDR`, not forwarded headers.
 Suppression and quota outcomes share the same public receipt.
 
+The internal `subscriptions.services.suppress` operation blocks an existing subscriber,
+cancels all pending/active/expired searches at that address, erases their criteria, and
+marks outstanding reminder previews obsolete in one transaction. Existing cancelled
+searches retain their cancellation timestamp; repeated suppression is harmless. Recovery
+and address-wide credentials are revoked, and the shared lifecycle lock prevents later
+creation, activation, renewal, editing, or reminder capture from bypassing the block.
+An operation admitted before suppression may complete first; already captured previews
+are historical records and are not recalled. Other subscribers are unaffected.
+
+This operation is deliberately internal: no public endpoint or operator command can
+trigger it yet. The future SES integration must authenticate and correlate provider
+events before calling it, including handling events for recipients already removed from
+the database. An unknown subscriber ID currently has no effect. Housekeeping retains
+blocked subscriber rows so a repeat submission cannot bypass suppression. This is not yet
+the final minimal suppression-record/retention design; retention deadlines and any unblock
+policy still need to be settled before launch. No live provider events are consumed.
+
 Run housekeeping daily once the lifecycle is operated outside tests:
 
 ```sh

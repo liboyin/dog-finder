@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils.crypto import salted_hmac
 
 from . import tokens
-from .models import Capacity, RequestSource, Search, Subscriber
+from .models import Capacity, ExpiryReminder, RequestSource, Search, Subscriber
 
 
 def active(now: datetime) -> QuerySet[Search]:
@@ -141,8 +141,38 @@ def cancel(
     search.status = "cancelled"
     search.cancelled_at = now
     search.name = search.description = search.postcode = search.state = ""
+    search.interstate = False
     search.save()
     return search
+
+
+@transaction.atomic
+def suppress(subscriber_id: int, now: datetime) -> int:
+    """Block an address and cancel its searches as one idempotent transaction.
+
+    This internal operation requires an already authenticated, correlated provider
+    event or explicit operator authorization. It is not exposed as a public endpoint.
+    The existing subscriber row retains suppression through housekeeping; minimal
+    suppression retention and provider event handling remain separate milestones.
+    Returns the number of newly cancelled searches. Already captured previews are
+    historical records, not recalled messages or evidence of provider acceptance.
+    """
+    Capacity.objects.select_for_update().get(pk=1)
+    subscriber = Subscriber.objects.filter(pk=subscriber_id).first()
+    if subscriber is None:
+        return 0
+    if not subscriber.suppressed:
+        subscriber.suppressed = True
+        subscriber.address_version = uuid.uuid4()
+        subscriber.recovery_version = uuid.uuid4()
+        subscriber.save(update_fields=["suppressed", "address_version", "recovery_version"])
+    identifiers = list(subscriber.searches.exclude(status="cancelled").values_list("pk", flat=True))
+    for identifier in identifiers:
+        cancel(identifier, now)
+    ExpiryReminder.objects.filter(search__subscriber=subscriber, status="pending").update(
+        status="obsolete"
+    )
+    return len(identifiers)
 
 
 @transaction.atomic

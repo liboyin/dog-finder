@@ -50,12 +50,17 @@ before implementation. README owns verified setup and current behaviour.
   Deduplication, failure rollback, concurrency, and migration rollback verified.
   Scheduling and provider send/acceptance semantics remain in S4/S6.
 
+- S3b suppression transition completed: internal address-wide blocking, search
+  cancellation/criteria erasure, recovery revocation, and pending reminder invalidation
+  under one lifecycle lock. Idempotency, failure rollback, housekeeping persistence,
+  admission release, and concurrent transitions verified. No public/provider endpoint added.
+
 ## Next tasks
 
 - S2: Validate permitted PetRescue access and benchmark representative DeepSeek matching
   quality/cost within an explicitly allocated evaluation budget. No live source access or
   paid requests are part of scaffolding.
-- S3b: Complete retention/suppression semantics.
+- S3b: Set retention policy and implement minimal retained suppression records.
 - S4: Add Procrastinate and the durable email-intent/SES event flow; exercise ambiguous
   acceptance, suppression, and cancellation races before enabling delivery.
 - S5: Adapt shared ingestion, source publication, baselines, candidates, and direct AI
