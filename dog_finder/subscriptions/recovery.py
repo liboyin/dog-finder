@@ -92,12 +92,21 @@ def request_recovery(email: str, request_source: str, now: datetime) -> None:
 
 
 @transaction.atomic
-def consume(token: str) -> Subscriber | None:
-    """Consume recovery once under the lifecycle lock without changing search criteria."""
+def consume(token: str, *, replace_links: bool = False) -> Subscriber | None:
+    """Consume recovery once, optionally replacing management access atomically.
+
+    Only mailbox recovery authorizes replacement. Confirmation and native unsubscribe
+    credentials remain valid; search criteria, baselines, and expiry are unchanged.
+    """
     Capacity.objects.select_for_update().get(pk=1)
     subscriber = resolve(token, "recovery")
     if subscriber is None:
         return None
     subscriber.recovery_version = uuid.uuid4()
-    subscriber.save(update_fields=["recovery_version"])
+    if replace_links:
+        subscriber.address_version = uuid.uuid4()
+        for search in subscriber.searches.all():
+            search.management_version = uuid.uuid4()
+            search.save(update_fields=["management_version"])
+    subscriber.save(update_fields=["recovery_version", "address_version"])
     return subscriber

@@ -2,5 +2,9 @@
 {% block content %}
 <h1>Open your alerts</h1>
 <p>This button consumes the recovery link and opens your searches. It does not change their criteria or expiry dates.</p>
-<form method="post">{% csrf_token %}<button type="submit">Open my alerts</button></form>
+<form method="post">{% csrf_token %}
+  <p><label><input type="checkbox" name="replace_links" value="yes"> Replace all my management links because a link was shared or exposed.</label></p>
+  <p>If selected, old address-wide and individual management links stop working, including renewal links in old emails. Save the new dashboard link. Native one-click unsubscribe links still work. Already opened pages cannot be erased.</p>
+  <button type="submit">Open my alerts</button>
+</form>
 {% endblock %}

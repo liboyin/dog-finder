@@ -38,15 +38,19 @@ before implementation. README owns verified setup and current behaviour.
 - S3b recovery/dashboard slice completed: local recovery email, seven-day single-use
   confirmation, shared creation/recovery limits, and isolated address-wide access to
   active/grace searches. PostgreSQL concurrency, scope, rendered pages, and migration
-  rollback verified. Exposed-link replacement and live delivery remain outstanding.
+  rollback verified. Live delivery remains outstanding.
+
+- S3b exposed-link replacement completed: opt-in mailbox recovery atomically rotates
+  address-wide and individual management credentials without changing search state or
+  native unsubscribe credentials. Stale browser cancellation is checked under the same
+  lock; replay, competing replacements, and unchanged default recovery are verified.
 
 ## Next tasks
 
 - S2: Validate permitted PetRescue access and benchmark representative DeepSeek matching
   quality/cost within an explicitly allocated evaluation budget. No live source access or
   paid requests are part of scaffolding.
-- S3b: Extend S3a with exposed-link replacement/rotation,
-  reminders, and complete retention/suppression semantics.
+- S3b: Extend S3a with reminders and complete retention/suppression semantics.
 - S4: Add Procrastinate and the durable email-intent/SES event flow; exercise ambiguous
   acceptance, suppression, and cancellation races before enabling delivery.
 - S5: Adapt shared ingestion, source publication, baselines, candidates, and direct AI

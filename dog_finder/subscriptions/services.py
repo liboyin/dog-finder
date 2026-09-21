@@ -124,11 +124,19 @@ def activate(search_id: uuid.UUID, version: uuid.UUID, now: datetime) -> tuple[S
 
 
 @transaction.atomic
-def cancel(search_id: uuid.UUID, now: datetime) -> Search | None:
-    """Cancel idempotently and immediately remove the stored search criteria."""
+def cancel(
+    search_id: uuid.UUID, now: datetime, *, management_version: uuid.UUID | None = None
+) -> Search | None:
+    """Erase criteria, rechecking browser authority under the lifecycle lock.
+
+    Trusted internal callers may omit the version after authorizing their own scope.
+    Browser callers must supply the version they resolved, so rotation wins races.
+    """
     Capacity.objects.select_for_update().get(pk=1)
     search = Search.objects.filter(pk=search_id).first()
-    if search is None:
+    if search is None or (
+        management_version is not None and search.management_version != management_version
+    ):
         return None
     search.status = "cancelled"
     search.cancelled_at = now

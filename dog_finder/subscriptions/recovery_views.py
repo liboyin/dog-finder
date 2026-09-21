@@ -49,7 +49,9 @@ def requested(request: HttpRequest) -> HttpResponse:
 def confirm(request: HttpRequest, token: str) -> HttpResponse:
     """Require an explicit protected action before consuming a recovery link."""
     subscriber = (
-        recovery.consume(token) if request.method == "POST" else recovery.resolve(token, "recovery")
+        recovery.consume(token, replace_links=request.POST.get("replace_links") == "yes")
+        if request.method == "POST"
+        else recovery.resolve(token, "recovery")
     )
     if subscriber is None:
         return render(

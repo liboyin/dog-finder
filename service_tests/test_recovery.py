@@ -251,3 +251,117 @@ def test_parallel_recovery_is_single_use_and_rate_limited(search, mailoutbox, op
         assert len(mailoutbox) == 3
         search.subscriber.refresh_from_db()
         assert search.subscriber.email_count == 3
+
+
+def test_replacement_revokes_management_only_and_preserves_other_addresses(search):
+    """Mailbox-authorized rotation changes only the owner's management credentials."""
+    other = Subscriber.objects.create(email="other@example.org")
+    other_token = testee.issue(other, "address")
+    address = testee.issue(search.subscriber, "address")
+    management = token_testee.issue(search, "management")
+    sibling = Search.objects.create(
+        subscriber=search.subscriber,
+        name="Grace search",
+        description="Quiet dog",
+        postcode="2000",
+        state="NSW",
+        interstate=False,
+        status="active",
+        created_at=NOW,
+        expires_at=NOW,
+    )
+    sibling_token = token_testee.issue(sibling, "management")
+    unsubscribe = token_testee.issue(search, "unsubscribe")
+    confirmation = token_testee.issue(search, "confirmation")
+    before = (search.description, search.expires_at, search.criteria_revision, search.edit_version)
+    token = testee.issue(search.subscriber, "recovery")
+    restored = testee.consume(token, replace_links=True)
+    assert testee.consume(token, replace_links=True) is None
+    assert testee.resolve(address, "address") is None
+    assert token_testee.resolve(management, "management") is None
+    assert token_testee.resolve(sibling_token, "management") is None
+    assert testee.resolve(other_token, "address").pk == other.pk
+    assert testee.resolve(testee.issue(restored, "address"), "address")
+    assert token_testee.resolve(unsubscribe, "unsubscribe")
+    assert token_testee.resolve(confirmation, "confirmation")
+    search.refresh_from_db()
+    assert before == (
+        search.description,
+        search.expires_at,
+        search.criteria_revision,
+        search.edit_version,
+    )
+    assert token_testee.resolve(token_testee.issue(search, "management"), "management")
+
+
+@pytest.mark.parametrize("replace", [False, True])
+def test_browser_replacement_requires_explicit_protected_choice(search, replace):
+    """GET, absent consent, and failed CSRF cannot silently replace management links."""
+    client = Client(enforce_csrf_checks=True)
+    address = testee.issue(search.subscriber, "address")
+    path = reverse("recovery-confirm", args=[testee.issue(search.subscriber, "recovery")])
+    assert client.get(path, {"replace_links": "yes"}).status_code == 200
+    assert testee.resolve(address, "address")
+    assert client.post(path, {"replace_links": "yes"}).status_code == 403
+    assert testee.resolve(address, "address")
+    data = {"csrfmiddlewaretoken": client.cookies["csrftoken"].value}
+    if replace:
+        data["replace_links"] = "yes"
+    response = client.post(path, data)
+    assert response.status_code == 302
+    assert client.get(response.url).status_code == 200
+    assert (testee.resolve(address, "address") is None) == replace
+
+
+def test_stale_browser_mutations_fail_after_replacement(search, client):
+    """Already resolved browser versions cannot cancel, edit, or renew after rotation."""
+    old_version = search.management_version
+    old_token = token_testee.issue(search, "management")
+    testee.consume(testee.issue(search.subscriber, "recovery"), replace_links=True)
+    assert service_testee.cancel(search.pk, NOW, management_version=old_version) is None
+    assert service_testee.renew(search.pk, old_version, NOW)
+    assert service_testee.edit(search.pk, old_version, {}, NOW)
+    for route in ("search-manage", "search-edit", "search-renew", "search-cancel"):
+        assert client.get(reverse(route, args=[old_token])).status_code == 410
+    search.refresh_from_db()
+    assert search.status == "active"
+    assert service_testee.cancel(search.pk, NOW, management_version=search.management_version)
+
+
+def test_cancel_view_rechecks_version_after_concurrent_replacement(search, client):
+    """A browser request authorized just before replacement cannot cancel afterwards."""
+    path = reverse("search-cancel", args=[token_testee.issue(search, "management")])
+    recovery_token = testee.issue(search.subscriber, "recovery")
+    original_cancel = service_testee.cancel
+
+    def rotate_then_cancel(*args, **kwargs):
+        """Deterministically interleave rotation after view resolution and before its lock."""
+        testee.consume(recovery_token, replace_links=True)
+        return original_cancel(*args, **kwargs)
+
+    with patch.object(service_testee, "cancel", side_effect=rotate_then_cancel):
+        assert client.post(path).status_code == 302
+    search.refresh_from_db()
+    assert search.status == "active"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_competing_replacements_only_commit_once(search):
+    """Concurrent consumers cannot invalidate the winning recovery's new dashboard."""
+    token = testee.issue(search.subscriber, "recovery")
+    barrier = Barrier(2)
+
+    def attempt(index):
+        """Own the worker connection through a bounded competing replacement."""
+        close_old_connections()
+        try:
+            barrier.wait(timeout=10)
+            return testee.consume(token, replace_links=True)
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(attempt, range(2)))
+    winners = [result for result in results if result is not None]
+    assert len(winners) == 1
+    assert testee.resolve(testee.issue(winners[0], "address"), "address")

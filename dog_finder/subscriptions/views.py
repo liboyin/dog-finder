@@ -126,7 +126,7 @@ def cancel(request: HttpRequest, token: str) -> HttpResponse:
             status=410,
         )
     if request.method == "POST":
-        services.cancel(search.pk, timezone.now())
+        services.cancel(search.pk, timezone.now(), management_version=search.management_version)
         return redirect("search-manage", token=token)
     return render(request, "subscriptions/cancel.html", {"search": search})
 

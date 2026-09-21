@@ -108,13 +108,21 @@ alongside registration in production, and its service rejects live email backend
 
 Recovery links use a seven-day window and require a CSRF-protected button press before
 being consumed. A successful use invalidates all outstanding recovery links for that
-address without changing searches or existing management links. It opens a separately
+address without changing searches. By default, existing management links remain valid.
+An optional, unchecked **Replace all my management links** checkbox revokes the address-wide
+credential and every individual search's management credential in the same transaction.
+Only the mailbox recovery link can authorize replacement, not an existing dashboard link.
+The resulting dashboard provides fresh links; old browser edit/cancel/renew operations
+recheck credentials under the lifecycle lock. A mutation that obtained that lock before
+replacement can finish first; replacement does not undo it or erase previously opened
+pages. Search criteria, baselines, expiry, confirmation links, and native one-click
+unsubscribe credentials are preserved. Save the new dashboard URL after replacement.
+It opens a separately
 scoped, masked-email dashboard listing active searches and grace-period renewal options,
 with links to existing edit, cancel, and renewal pages. Pending, cancelled, fully expired,
 and other addresses' searches are excluded. The recovery email also lists grace-period
 searches with their individual renewal links. A single-search or unsubscribe credential
-cannot open the address-wide dashboard. Replacing exposed management credentials remains
-unimplemented; this recovery preview restores access, not revocation.
+cannot open the address-wide dashboard.
 
 Transactions enforce five active searches per address and 250 distinct active subscribers.
 Additional searches for existing subscribers do not need another subscriber slot. Expired
@@ -134,7 +142,7 @@ It deletes abandoned seven-day confirmations, cancelled searches, and expired se
 beyond the 30-day grace period, without touching other searches at the same address.
 Same-day email counters and suppressed addresses are retained. A production scheduler
 and minimal durable suppression records are part of subsequent work; no timer is installed
-by this feature. Management-link replacement, reminders, and durable provider delivery
+by this feature. Reminders and durable provider delivery
 also remain outstanding before launch.
 
 The native unsubscribe receiver at `/s/unsubscribe/<token>/` accepts the
