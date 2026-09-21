@@ -43,8 +43,8 @@ returns HTTP 503 if it is unavailable. These probes only report application/data
 availability, not the health of the future daily processing pipeline.
 
 Local email uses Django's in-memory backend. No source fetches, AI calls, email sends,
-or background jobs start automatically. Procrastinate and provider adapters will be
-added with their first working features.
+or background jobs start automatically. Procrastinate is available for explicitly
+queued local reminder previews; provider adapters are not yet implemented.
 
 ## Subscriber preview
 
@@ -186,6 +186,39 @@ database; tests own a disposable database. This capture path rejects live backen
 not crash-safe external delivery. S4 must add the durable send-intent/acceptance workflow
 before any real reminder sends; do not simply switch its email backend. No scheduler or
 timer is installed by this feature.
+
+### PostgreSQL-backed preview worker
+
+Procrastinate 3.9 uses the same PostgreSQL database, with its library-owned migrations
+applied by Django's normal `migrate` command. No Redis or separate broker is needed.
+Its SQL migrations are forward-only, so do not assume Django can roll them back.
+The [Django integration](https://procrastinate.readthedocs.io/en/stable/howto/django.html)
+discovers the task in `subscriptions/tasks.py`. On a development database:
+
+```sh
+uv run python manage.py migrate
+uv run python manage.py procrastinate healthchecks
+uv run python manage.py enqueue_expiry_reminders
+uv run python manage.py procrastinate worker --one-shot --queues reminder-preview --concurrency 1
+```
+
+These commands were verified against disposable PostgreSQL 16.15 using test settings.
+To select different settings, set `DJANGO_SETTINGS_MODULE` in the environment; the
+Procrastinate command's Django `--settings` option must precede its subcommand.
+
+Planning and deferral commit together. Jobs contain only reminder IDs, never email
+addresses, descriptions, bodies, or private credentials. Waiting jobs are deduplicated;
+per-reminder execution locks and the existing lifecycle checks make replay safe. The
+default worker handles only `reminder-preview`, with concurrency one. A failed job gets
+two retries, 60 seconds apart (three attempts total), then remains failed for inspection.
+The one-shot worker drains currently ready work, **not** future scheduled retries; rerun
+it later to process those. Running the enqueue command again can explicitly requeue a
+still-pending reminder after its previous job failed. No automatic job cleanup is configured.
+
+The same local-capture boundary above applies: a succeeded job is not email delivery,
+messages disappear with the worker process, and a lifecycle no-op also succeeds. This
+does not implement crash recovery for abandoned in-progress jobs, provider acceptance,
+recurring scheduling, or production worker supervision. Those remain launch prerequisites.
 
 ### Native unsubscribe receiver
 

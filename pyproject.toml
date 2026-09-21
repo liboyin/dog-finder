@@ -6,6 +6,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
   "django>=5.2,<5.3",
   "gunicorn>=23,<24",
+  "procrastinate[django]>=3.9,<4",
   "psycopg[binary]>=3.2,<4",
 ]
 

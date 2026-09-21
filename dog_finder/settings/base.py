@@ -5,12 +5,14 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parents[2]
 DEBUG = False
 INSTALLED_APPS = [
+    "procrastinate.contrib.django",
     "dog_finder.subscriptions",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.staticfiles",
 ]
+PROCRASTINATE_WORKER_DEFAULTS = {"concurrency": 1, "queues": ["reminder-preview"]}
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
